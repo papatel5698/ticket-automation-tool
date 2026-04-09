@@ -240,7 +240,7 @@ class TestRunFullAnalysis:
             "description": "Fix the bug",
         }
 
-        config = {"stale_days": 30, "top_n": 10}
+        config = {"stale_days": 0, "top_n": 10}
         cli_output, analyses, summary, top = run_full_analysis(
             config, "gh_token", "devin_token", "owner/repo"
         )

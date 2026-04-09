@@ -19,7 +19,7 @@ def temp_config(tmp_path):
 
 class TestDefaults:
     def test_default_stale_days(self):
-        assert DEFAULTS["stale_days"] == 30
+        assert DEFAULTS["stale_days"] == 0
 
     def test_default_top_n(self):
         assert DEFAULTS["top_n"] == 10
@@ -29,7 +29,7 @@ class TestLoadConfig:
     def test_creates_config_if_missing(self, temp_config):
         with patch("src.config.CONFIG_FILE", temp_config):
             config = _load_config()
-            assert config["stale_days"] == 30
+            assert config["stale_days"] == 0
             assert config["top_n"] == 10
             assert os.path.exists(temp_config)
 
@@ -73,7 +73,7 @@ class TestGetConfig:
     def test_gets_value(self, temp_config):
         with patch("src.config.CONFIG_FILE", temp_config):
             value = get_config("stale_days")
-            assert value == 30
+            assert value == 0
 
     def test_raises_on_unknown_key(self, temp_config):
         with patch("src.config.CONFIG_FILE", temp_config):
@@ -93,7 +93,7 @@ class TestGetAllConfig:
     def test_returns_all_with_defaults(self, temp_config):
         with patch("src.config.CONFIG_FILE", temp_config):
             config = get_all_config()
-            assert config["stale_days"] == 30
+            assert config["stale_days"] == 0
             assert config["top_n"] == 10
 
     def test_overrides_with_saved_values(self, temp_config):

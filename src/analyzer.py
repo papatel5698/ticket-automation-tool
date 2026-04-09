@@ -192,7 +192,7 @@ def run_full_analysis(config, github_token, devin_token, repo, stale_days=None,
                       top_n=None, filters=None, progress_callback=None,
                       use_cache=True):
     """Main entry point: fetch issues, analyze stale ones, post summary."""
-    stale_days = stale_days if stale_days is not None else config.get("stale_days", 30)
+    stale_days = stale_days if stale_days is not None else config.get("stale_days", 0)
     top_n_count = top_n if top_n is not None else config.get("top_n", 10)
 
     # Fetch and filter stale issues
