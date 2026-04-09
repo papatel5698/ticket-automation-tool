@@ -6,7 +6,7 @@ A Python CLI that uses the **Devin API** to analyze stale GitHub issues, classif
 
 ## What It Does
 
-1. **Finds stale issues** — Scans a GitHub repo for open issues with no activity in N days (default: 30)
+1. **Finds stale issues** — Scans a GitHub repo for open issues with no activity in N days (default: 0, i.e. all open issues)
 2. **Labels them** — Automatically adds a `stale` label to each stale issue on GitHub
 3. **Analyzes each issue with Devin** — Sends each issue to the Devin API, which investigates the codebase and returns a structured assessment
 4. **Generates a summary** — Aggregates results by type, priority, and recommended action
@@ -93,7 +93,7 @@ Some settings are saved to `config.json` so they persist between runs:
 # View current config
 ticket-analyzer config list
 # Output:
-#   stale_days = 30
+#   stale_days = 0
 #   top_n = 10
 
 # Change the staleness threshold to 14 days
@@ -108,7 +108,7 @@ ticket-analyzer config get stale_days
 ```
 
 The config file is created automatically on first run with these defaults:
-- `stale_days`: **30** — issues with no activity for 30+ days are considered stale
+- `stale_days`: **0** — all open issues are considered stale by default
 - `top_n`: **10** — show the top 10 tickets in the results table
 
 ---
@@ -125,7 +125,7 @@ ticket-analyzer analyze
 
 This will:
 1. Fetch all open issues from the repo
-2. Filter to those with no activity in 30+ days (or your configured threshold)
+2. Filter to those with no activity in N+ days (default: 0, meaning all issues)
 3. Add a `stale` label to each one on GitHub
 4. Send each to Devin for analysis
 5. Post a markdown summary to a dedicated "Weekly Stale Ticket Summary" issue on GitHub
@@ -161,8 +161,8 @@ Top 10 Tickets
 These flags override your saved config **for this run only** — they don't change `config.json`:
 
 ```bash
-# Treat ALL issues as stale (useful for demo repos with recent issues)
-ticket-analyzer analyze --stale-days 0
+# Only treat issues with 14+ days of inactivity as stale
+ticket-analyzer analyze --stale-days 14
 
 # Show top 20 instead of top 10
 ticket-analyzer analyze --top 20

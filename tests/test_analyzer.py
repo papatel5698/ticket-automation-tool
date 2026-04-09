@@ -222,8 +222,8 @@ class TestRunFullAnalysis:
         mock_github.get_open_issues.return_value = [
             {"number": 1, "title": "Bug", "updated_at": old_date, "labels": []},
         ]
-        mock_github.find_summary_issue.return_value = 99
-        mock_github.post_comment.return_value = {"id": 1}
+        mock_github.find_or_create_summary_discussion.return_value = "D_abc123"
+        mock_github.post_discussion_comment.return_value = {"id": "DC_1"}
         mock_github.add_label.return_value = []
 
         # Setup mock Devin
@@ -240,7 +240,7 @@ class TestRunFullAnalysis:
             "description": "Fix the bug",
         }
 
-        config = {"stale_days": 30, "top_n": 10}
+        config = {"stale_days": 0, "top_n": 10}
         cli_output, analyses, summary, top = run_full_analysis(
             config, "gh_token", "devin_token", "owner/repo"
         )

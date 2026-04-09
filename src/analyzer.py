@@ -1,7 +1,8 @@
+import time
 from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from src.models import TicketAnalysis, AnalysisSummary
-from src import github_client, devin_client
+from src import github_client, devin_client, cache
 
 
 def identify_stale_issues(issues, stale_days):
@@ -147,15 +148,25 @@ def format_github_comment(summary, top_n):
     return "\n".join(lines)
 
 
-def analyze_single_ticket(issue, github_token, devin_token, repo):
+def analyze_single_ticket(issue, github_token, devin_token, repo,
+                          progress_callback=None):
     """Deep-dive analysis of one ticket using Devin."""
+    issue_num = issue["number"]
+
+    if progress_callback:
+        progress_callback("session_creating", 0, 0, issue_num)
+
     session = devin_client.create_analysis_session(devin_token, issue, repo)
     session_id = session.get("session_id")
+
+    if progress_callback:
+        progress_callback("session_waiting", 0, 0, issue_num, session_id)
+
     result = devin_client.wait_for_session(devin_token, session_id)
     parsed = devin_client.parse_analysis_result(result)
 
     return TicketAnalysis(
-        issue_number=issue["number"],
+        issue_number=issue_num,
         title=issue["title"],
         type=parsed.get("type", "unknown"),
         action=parsed.get("action", "needs_more_info"),
@@ -168,59 +179,94 @@ def analyze_single_ticket(issue, github_token, devin_token, repo):
     )
 
 
+def _staggered_analyze(issue, github_token, devin_token, repo, delay,
+                       progress_callback=None):
+    """Analyze a single ticket with a staggered start delay to avoid 429s."""
+    if delay > 0:
+        time.sleep(delay)
+    return analyze_single_ticket(issue, github_token, devin_token, repo,
+                                 progress_callback=progress_callback)
+
+
 def run_full_analysis(config, github_token, devin_token, repo, stale_days=None,
-                      top_n=None, filters=None, progress_callback=None):
+                      top_n=None, filters=None, progress_callback=None,
+                      use_cache=True):
     """Main entry point: fetch issues, analyze stale ones, post summary."""
-    stale_days = stale_days if stale_days is not None else config.get("stale_days", 30)
+    stale_days = stale_days if stale_days is not None else config.get("stale_days", 0)
     top_n_count = top_n if top_n is not None else config.get("top_n", 10)
 
     # Fetch and filter stale issues
     issues = github_client.get_open_issues(repo, github_token)
     stale_issues = identify_stale_issues(issues, stale_days)
 
-    # Label stale issues
+    # Split issues into cached and uncached
+    analyses = []
+    uncached_issues = []
+    total = len(stale_issues)
+
+    if use_cache:
+        for issue in stale_issues:
+            cached = cache.get_cached_analysis(issue)
+            if cached is not None:
+                analyses.append(cached)
+            else:
+                uncached_issues.append(issue)
+    else:
+        uncached_issues = stale_issues
+
+    cached_count = total - len(uncached_issues)
+
+    if progress_callback:
+        progress_callback("start", total, cached_count=cached_count)
+
+    # Analyze uncached issues with Devin (in parallel with staggered starts)
+    if uncached_issues:
+        max_workers = min(3, len(uncached_issues))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_issue = {}
+            for idx, issue in enumerate(uncached_issues):
+                delay = idx * 2  # 2-second stagger between submissions
+                future = executor.submit(
+                    _staggered_analyze, issue, github_token, devin_token, repo,
+                    delay, progress_callback=progress_callback
+                )
+                future_to_issue[future] = issue
+
+            completed = cached_count
+            for future in as_completed(future_to_issue):
+                issue = future_to_issue[future]
+                completed += 1
+                try:
+                    analysis = future.result()
+                    analyses.append(analysis)
+                    if use_cache:
+                        cache.cache_analysis(issue, analysis)
+                    if progress_callback:
+                        progress_callback("done", total, completed, issue["number"], issue["title"])
+                except Exception as e:
+                    if progress_callback:
+                        progress_callback("error", total, completed, issue["number"], str(e))
+                    else:
+                        print(f"Warning: Failed to analyze issue #{issue['number']}: {e}")
+
+    # Label stale issues (done after analysis to avoid modifying updated_at
+    # before caching, which would invalidate the cache on subsequent runs)
     for issue in stale_issues:
         existing_labels = [l["name"] for l in issue.get("labels", [])]
         if "stale" not in existing_labels:
             github_client.add_label(repo, issue["number"], "stale", github_token)
 
-    # Analyze each stale issue with Devin (in parallel)
-    analyses = []
-    total = len(stale_issues)
-    if progress_callback:
-        progress_callback("start", total)
-
-    with ThreadPoolExecutor(max_workers=min(10, total) if total > 0 else 1) as executor:
-        future_to_issue = {
-            executor.submit(analyze_single_ticket, issue, github_token, devin_token, repo): issue
-            for issue in stale_issues
-        }
-        completed = 0
-        for future in as_completed(future_to_issue):
-            issue = future_to_issue[future]
-            completed += 1
-            try:
-                analysis = future.result()
-                analyses.append(analysis)
-                if progress_callback:
-                    progress_callback("done", total, completed, issue["number"], issue["title"])
-            except Exception as e:
-                if progress_callback:
-                    progress_callback("error", total, completed, issue["number"], str(e))
-                else:
-                    print(f"Warning: Failed to analyze issue #{issue['number']}: {e}")
-
     # Generate summary and top-N
     summary = generate_summary(analyses)
     top_tickets = generate_top_n(analyses, top_n_count, filters)
 
-    # Post summary to GitHub
+    # Post summary to GitHub Discussions
     try:
-        summary_issue_number = github_client.find_summary_issue(repo, github_token)
+        discussion_id = github_client.find_or_create_summary_discussion(repo, github_token)
         comment_body = format_github_comment(summary, top_tickets)
-        github_client.post_comment(repo, summary_issue_number, comment_body, github_token)
+        github_client.post_discussion_comment(discussion_id, comment_body, github_token)
     except Exception as e:
-        print(f"Warning: Failed to post summary to GitHub: {e}")
+        print(f"Warning: Failed to post summary to GitHub Discussion: {e}")
 
     # Format CLI output
     cli_output = format_cli_output(summary, top_tickets)
