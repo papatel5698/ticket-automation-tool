@@ -8,10 +8,17 @@ from src import config as config_module
 from src import github_client, devin_client, analyzer
 
 
-def _progress_callback(event, total, completed=0, issue_num=None, detail=None):
+def _progress_callback(event, total, completed=0, issue_num=None, detail=None,
+                       cached_count=0):
     """Display progress during parallel analysis."""
     if event == "start":
-        click.echo(f"Analyzing {total} issue{'s' if total != 1 else ''} in parallel...")
+        if cached_count == total:
+            click.echo(f"Loading {total} cached result{'s' if total != 1 else ''}...")
+        elif cached_count > 0:
+            click.echo(f"Analyzing {total - cached_count} issue{'s' if (total - cached_count) != 1 else ''} "
+                       f"in parallel ({cached_count} cached)...")
+        else:
+            click.echo(f"Analyzing {total} issue{'s' if total != 1 else ''} in parallel...")
     elif event == "done":
         click.echo(f"  [{completed}/{total}] #{issue_num} {detail}")
     elif event == "error":
@@ -41,8 +48,10 @@ def cli():
               default=None, help="Filter by priority.")
 @click.option("--ticket", type=int, default=None,
               help="Analyze a single ticket by issue number.")
+@click.option("--no-cache", is_flag=True, default=False,
+              help="Skip cache and re-analyze all issues from scratch.")
 def analyze(token, github_token, repo, stale_days, top, action, ticket_type,
-            priority, ticket):
+            priority, ticket, no_cache):
     """Analyze stale GitHub issues and generate a summary."""
     if not token:
         click.echo("Error: Devin API token required. Set DEVIN_API_TOKEN or use --token.")
@@ -78,6 +87,7 @@ def analyze(token, github_token, repo, stale_days, top, action, ticket_type,
         top_n=top,
         filters=filters if filters else None,
         progress_callback=_progress_callback,
+        use_cache=not no_cache,
     )
 
     click.echo(cli_output)
@@ -159,6 +169,14 @@ def config_list():
     cfg = config_module.list_config()
     for key, value in cfg.items():
         click.echo(f"{key} = {value}")
+
+
+@cli.command(name="clear-cache")
+def clear_cache():
+    """Clear the local analysis cache."""
+    from src import cache as cache_module
+    cache_module.clear_cache()
+    click.echo("Analysis cache cleared.")
 
 
 if __name__ == "__main__":
