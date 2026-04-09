@@ -1,10 +1,21 @@
 import os
+import sys
 import warnings
 warnings.filterwarnings("ignore", message="urllib3 v2 only supports OpenSSL")
 
 import click
 from src import config as config_module
 from src import github_client, devin_client, analyzer
+
+
+def _progress_callback(event, total, completed=0, issue_num=None, detail=None):
+    """Display progress during parallel analysis."""
+    if event == "start":
+        click.echo(f"Analyzing {total} issue{'s' if total != 1 else ''} in parallel...")
+    elif event == "done":
+        click.echo(f"  [{completed}/{total}] #{issue_num} {detail}")
+    elif event == "error":
+        click.echo(f"  [{completed}/{total}] #{issue_num} FAILED: {detail}")
 
 
 @click.group()
@@ -66,6 +77,7 @@ def analyze(token, github_token, repo, stale_days, top, action, ticket_type,
         stale_days=stale_days,
         top_n=top,
         filters=filters if filters else None,
+        progress_callback=_progress_callback,
     )
 
     click.echo(cli_output)

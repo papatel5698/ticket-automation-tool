@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from src.models import TicketAnalysis, AnalysisSummary
 from src import github_client, devin_client
 
@@ -168,7 +169,7 @@ def analyze_single_ticket(issue, github_token, devin_token, repo):
 
 
 def run_full_analysis(config, github_token, devin_token, repo, stale_days=None,
-                      top_n=None, filters=None):
+                      top_n=None, filters=None, progress_callback=None):
     """Main entry point: fetch issues, analyze stale ones, post summary."""
     stale_days = stale_days if stale_days is not None else config.get("stale_days", 30)
     top_n_count = top_n if top_n is not None else config.get("top_n", 10)
@@ -183,14 +184,31 @@ def run_full_analysis(config, github_token, devin_token, repo, stale_days=None,
         if "stale" not in existing_labels:
             github_client.add_label(repo, issue["number"], "stale", github_token)
 
-    # Analyze each stale issue with Devin
+    # Analyze each stale issue with Devin (in parallel)
     analyses = []
-    for issue in stale_issues:
-        try:
-            analysis = analyze_single_ticket(issue, github_token, devin_token, repo)
-            analyses.append(analysis)
-        except Exception as e:
-            print(f"Warning: Failed to analyze issue #{issue['number']}: {e}")
+    total = len(stale_issues)
+    if progress_callback:
+        progress_callback("start", total)
+
+    with ThreadPoolExecutor(max_workers=min(10, total) if total > 0 else 1) as executor:
+        future_to_issue = {
+            executor.submit(analyze_single_ticket, issue, github_token, devin_token, repo): issue
+            for issue in stale_issues
+        }
+        completed = 0
+        for future in as_completed(future_to_issue):
+            issue = future_to_issue[future]
+            completed += 1
+            try:
+                analysis = future.result()
+                analyses.append(analysis)
+                if progress_callback:
+                    progress_callback("done", total, completed, issue["number"], issue["title"])
+            except Exception as e:
+                if progress_callback:
+                    progress_callback("error", total, completed, issue["number"], str(e))
+                else:
+                    print(f"Warning: Failed to analyze issue #{issue['number']}: {e}")
 
     # Generate summary and top-N
     summary = generate_summary(analyses)
