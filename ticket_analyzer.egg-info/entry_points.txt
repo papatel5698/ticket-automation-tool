@@ -1,2 +1,0 @@
-[console_scripts]
-ticket-analyzer = src.cli:cli
