@@ -246,13 +246,13 @@ def run_full_analysis(config, github_token, devin_token, repo, stale_days=None,
     summary = generate_summary(analyses)
     top_tickets = generate_top_n(analyses, top_n_count, filters)
 
-    # Post summary to GitHub
+    # Post summary to GitHub Discussions
     try:
-        summary_issue_number = github_client.find_summary_issue(repo, github_token)
+        discussion_id = github_client.find_or_create_summary_discussion(repo, github_token)
         comment_body = format_github_comment(summary, top_tickets)
-        github_client.post_comment(repo, summary_issue_number, comment_body, github_token)
+        github_client.post_discussion_comment(discussion_id, comment_body, github_token)
     except Exception as e:
-        print(f"Warning: Failed to post summary to GitHub: {e}")
+        print(f"Warning: Failed to post summary to GitHub Discussion: {e}")
 
     # Format CLI output
     cli_output = format_cli_output(summary, top_tickets)
