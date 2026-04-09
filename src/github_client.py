@@ -1,7 +1,9 @@
 import requests
 import time
+import json
 
 API_BASE = "https://api.github.com"
+GRAPHQL_URL = "https://api.github.com/graphql"
 MAX_RETRIES = 3
 RETRY_DELAY = 2
 
@@ -106,21 +108,107 @@ def create_issue(repo, title, body, github_token=None):
     return resp.json()
 
 
-def find_summary_issue(repo, github_token=None):
-    """Find the dedicated summary issue, or create it if it doesn't exist."""
+def _graphql_request(query, github_token, variables=None):
+    """Make a GraphQL request to the GitHub API."""
+    headers = {
+        "Authorization": f"bearer {github_token}",
+        "Content-Type": "application/json",
+    }
+    payload = {"query": query}
+    if variables:
+        payload["variables"] = variables
+    resp = requests.post(GRAPHQL_URL, headers=headers, json=payload)
+    resp.raise_for_status()
+    data = resp.json()
+    if "errors" in data:
+        raise Exception(f"GraphQL error: {data['errors']}")
+    return data["data"]
+
+
+def get_repo_discussion_category(repo, category_name, github_token=None):
+    """Get the repository ID and a discussion category ID by name."""
+    owner, name = repo.split("/")
+    query = """
+    query($owner: String!, $name: String!) {
+        repository(owner: $owner, name: $name) {
+            id
+            discussionCategories(first: 20) {
+                nodes { id name }
+            }
+        }
+    }
+    """
+    data = _graphql_request(query, github_token, {"owner": owner, "name": name})
+    repo_data = data["repository"]
+    repo_id = repo_data["id"]
+    for cat in repo_data["discussionCategories"]["nodes"]:
+        if cat["name"].lower() == category_name.lower():
+            return repo_id, cat["id"]
+    raise Exception(f"Discussion category '{category_name}' not found in {repo}")
+
+
+def find_or_create_summary_discussion(repo, github_token=None):
+    """Find the dedicated summary discussion, or create it if it doesn't exist."""
     summary_title = "Weekly Stale Ticket Summary"
+    owner, name = repo.split("/")
 
-    # Search for existing summary issue
-    issues = get_open_issues(repo, github_token)
-    for issue in issues:
-        if issue["title"] == summary_title:
-            return issue["number"]
+    # Search existing discussions
+    query = """
+    query($owner: String!, $name: String!) {
+        repository(owner: $owner, name: $name) {
+            discussions(first: 50) {
+                nodes { id title }
+            }
+        }
+    }
+    """
+    data = _graphql_request(query, github_token, {"owner": owner, "name": name})
+    for disc in data["repository"]["discussions"]["nodes"]:
+        if disc["title"] == summary_title:
+            return disc["id"]
 
-    # Create the summary issue if not found
+    # Create a new discussion in the "General" category
+    repo_id, category_id = get_repo_discussion_category(repo, "General", github_token)
+    mutation = """
+    mutation($repoId: ID!, $categoryId: ID!, $title: String!, $body: String!) {
+        createDiscussion(input: {
+            repositoryId: $repoId,
+            categoryId: $categoryId,
+            title: $title,
+            body: $body
+        }) {
+            discussion { id }
+        }
+    }
+    """
     body = (
-        "This issue is used by the ticket-automation-tool to post weekly "
+        "This discussion is used by the ticket-automation-tool to post "
         "analysis summaries of stale tickets.\n\n"
-        "Subscribe to this issue to receive notifications when new analyses are posted."
+        "Subscribe to this discussion to receive notifications when new analyses are posted."
     )
-    new_issue = create_issue(repo, summary_title, body, github_token)
-    return new_issue["number"]
+    data = _graphql_request(mutation, github_token, {
+        "repoId": repo_id,
+        "categoryId": category_id,
+        "title": summary_title,
+        "body": body,
+    })
+    return data["createDiscussion"]["discussion"]["id"]
+
+
+def post_discussion_comment(discussion_id, body, github_token=None):
+    """Post a comment on a GitHub Discussion."""
+    mutation = """
+    mutation($discussionId: ID!, $body: String!) {
+        addDiscussionComment(input: {
+            discussionId: $discussionId,
+            body: $body
+        }) {
+            comment { id }
+        }
+    }
+    """
+    data = _graphql_request(mutation, github_token, {
+        "discussionId": discussion_id,
+        "body": body,
+    })
+    return data["addDiscussionComment"]["comment"]

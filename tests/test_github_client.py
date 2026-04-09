@@ -2,7 +2,8 @@ import pytest
 from unittest.mock import patch, MagicMock
 from src.github_client import (
     get_open_issues, get_issue, add_label, post_comment,
-    create_issue, find_summary_issue,
+    create_issue, find_or_create_summary_discussion,
+    post_discussion_comment, _graphql_request,
 )
 
 
@@ -108,28 +109,45 @@ class TestCreateIssue:
         assert result["number"] == 10
 
 
-class TestFindSummaryIssue:
-    @patch("src.github_client.requests.post")
-    @patch("src.github_client.requests.get")
-    def test_finds_existing_summary(self, mock_get, mock_post):
-        issues = [
-            {"number": 5, "title": "Weekly Stale Ticket Summary"},
-        ]
-        mock_get.side_effect = [
-            _mock_response(json_data=issues),
-            _mock_response(json_data=[]),
-        ]
-        result = find_summary_issue("owner/repo", "token123")
-        assert result == 5
+class TestFindOrCreateSummaryDiscussion:
+    @patch("src.github_client._graphql_request")
+    def test_finds_existing_discussion(self, mock_gql):
+        mock_gql.return_value = {
+            "repository": {
+                "discussions": {
+                    "nodes": [
+                        {"id": "D_abc123", "title": "Weekly Stale Ticket Summary"},
+                    ]
+                }
+            }
+        }
+        result = find_or_create_summary_discussion("owner/repo", "token123")
+        assert result == "D_abc123"
 
-    @patch("src.github_client.requests.post")
-    @patch("src.github_client.requests.get")
-    def test_creates_summary_if_missing(self, mock_get, mock_post):
-        mock_get.side_effect = [
-            _mock_response(json_data=[]),
+    @patch("src.github_client._graphql_request")
+    def test_creates_discussion_if_missing(self, mock_gql):
+        mock_gql.side_effect = [
+            # First call: search discussions (none found)
+            {"repository": {"discussions": {"nodes": []}}},
+            # Second call: get repo ID and category
+            {"repository": {
+                "id": "R_abc",
+                "discussionCategories": {
+                    "nodes": [{"id": "DC_general", "name": "General"}]
+                },
+            }},
+            # Third call: create discussion
+            {"createDiscussion": {"discussion": {"id": "D_new123"}}},
         ]
-        mock_post.return_value = _mock_response(
-            json_data={"number": 21, "title": "Weekly Stale Ticket Summary"}
-        )
-        result = find_summary_issue("owner/repo", "token123")
-        assert result == 21
+        result = find_or_create_summary_discussion("owner/repo", "token123")
+        assert result == "D_new123"
+
+
+class TestPostDiscussionComment:
+    @patch("src.github_client._graphql_request")
+    def test_posts_comment(self, mock_gql):
+        mock_gql.return_value = {
+            "addDiscussionComment": {"comment": {"id": "DC_comment1"}}
+        }
+        result = post_discussion_comment("D_abc123", "Test body", "token123")
+        assert result["id"] == "DC_comment1"
