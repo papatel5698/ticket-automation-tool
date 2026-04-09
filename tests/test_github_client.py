@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 from src.github_client import (
     get_open_issues, get_issue, add_label, post_comment,
-    create_issue, find_or_create_summary_discussion,
+    create_issue, create_summary_discussion, _format_discussion_title,
     post_discussion_comment, _graphql_request,
 )
 
@@ -109,38 +109,34 @@ class TestCreateIssue:
         assert result["number"] == 10
 
 
-class TestFindOrCreateSummaryDiscussion:
-    @patch("src.github_client._graphql_request")
-    def test_finds_existing_discussion(self, mock_gql):
-        mock_gql.return_value = {
-            "repository": {
-                "discussions": {
-                    "nodes": [
-                        {"id": "D_abc123", "title": "Weekly Ticket Summary"},
-                    ]
-                }
-            }
-        }
-        result = find_or_create_summary_discussion("owner/repo", "token123")
-        assert result == "D_abc123"
+class TestFormatDiscussionTitle:
+    def test_title_format(self):
+        title = _format_discussion_title()
+        assert title.startswith("Open Ticket Summary ran ")
+        assert " at " in title
 
+    def test_title_contains_am_or_pm(self):
+        title = _format_discussion_title()
+        assert "am" in title or "pm" in title
+
+
+class TestCreateSummaryDiscussion:
     @patch("src.github_client._graphql_request")
-    def test_creates_discussion_if_missing(self, mock_gql):
+    def test_creates_new_discussion(self, mock_gql):
         mock_gql.side_effect = [
-            # First call: search discussions (none found)
-            {"repository": {"discussions": {"nodes": []}}},
-            # Second call: get repo ID and category
+            # First call: get repo ID and category
             {"repository": {
                 "id": "R_abc",
                 "discussionCategories": {
                     "nodes": [{"id": "DC_general", "name": "General"}]
                 },
             }},
-            # Third call: create discussion
+            # Second call: create discussion
             {"createDiscussion": {"discussion": {"id": "D_new123"}}},
         ]
-        result = find_or_create_summary_discussion("owner/repo", "token123")
+        result = create_summary_discussion("owner/repo", "Summary body", "token123")
         assert result == "D_new123"
+        assert mock_gql.call_count == 2
 
 
 class TestPostDiscussionComment:
