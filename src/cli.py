@@ -13,7 +13,7 @@ def _progress_callback(event, total, completed=0, issue_num=None, detail=None,
     """Display progress during parallel analysis."""
     if event == "start":
         if total == 0:
-            click.echo("No stale issues found.")
+            click.echo("No open issues found.")
         elif cached_count == total:
             click.echo(f"Loading {total} cached result{'s' if total != 1 else ''}...")
         elif cached_count > 0:
@@ -33,7 +33,7 @@ def _progress_callback(event, total, completed=0, issue_num=None, detail=None,
 
 @click.group()
 def cli():
-    """Ticket Analyzer - Analyze stale GitHub issues using Devin AI."""
+    """Ticket Analyzer - Analyze open GitHub issues using Devin AI."""
     pass
 
 
@@ -41,8 +41,6 @@ def cli():
 @click.option("--token", envvar="DEVIN_API_TOKEN", help="Devin API token.")
 @click.option("--github-token", envvar="GITHUB_TOKEN", help="GitHub API token.")
 @click.option("--repo", envvar="GITHUB_REPO", help="Target repo (owner/repo).")
-@click.option("--stale-days", type=int, default=None,
-              help="Override staleness threshold (days). Does not persist.")
 @click.option("--top", type=int, default=None,
               help="Override top-N ticket count. Does not persist.")
 @click.option("--action", type=click.Choice(["automate", "engineer_review", "needs_more_info"]),
@@ -56,9 +54,9 @@ def cli():
               help="Analyze a single ticket by issue number.")
 @click.option("--no-cache", is_flag=True, default=False,
               help="Skip cache and re-analyze all issues from scratch.")
-def analyze(token, github_token, repo, stale_days, top, action, ticket_type,
+def analyze(token, github_token, repo, top, action, ticket_type,
             priority, ticket, no_cache):
-    """Analyze stale GitHub issues and generate a summary."""
+    """Analyze open GitHub issues and generate a summary."""
     if not token:
         click.echo("Error: Devin API token required. Set DEVIN_API_TOKEN or use --token.")
         raise SystemExit(1)
@@ -89,7 +87,6 @@ def analyze(token, github_token, repo, stale_days, top, action, ticket_type,
 
     cli_output, analyses, summary, top_tickets = analyzer.run_full_analysis(
         cfg, github_token, token, repo,
-        stale_days=stale_days,
         top_n=top,
         filters=filters if filters else None,
         progress_callback=_progress_callback,

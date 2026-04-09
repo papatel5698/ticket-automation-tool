@@ -116,7 +116,7 @@ class TestFindOrCreateSummaryDiscussion:
             "repository": {
                 "discussions": {
                     "nodes": [
-                        {"id": "D_abc123", "title": "Weekly Stale Ticket Summary"},
+                        {"id": "D_abc123", "title": "Weekly Ticket Summary"},
                     ]
                 }
             }

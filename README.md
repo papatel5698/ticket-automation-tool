@@ -1,17 +1,16 @@
 # Ticket Automation Tool
 
-A Python CLI that uses the **Devin API** to analyze stale GitHub issues, classify them, and optionally trigger automated fixes. Point it at any GitHub repo and get a structured breakdown of what's stale, what Devin can fix automatically, and what needs human review.
+A Python CLI that uses the **Devin API** to analyze open GitHub issues, classify them, and optionally trigger automated fixes. Point it at any GitHub repo and get a structured breakdown of what Devin can fix automatically and what needs human review.
 
 ---
 
 ## What It Does
 
-1. **Finds stale issues** — Scans a GitHub repo for open issues with no activity in N days (default: 0, i.e. all open issues)
-2. **Labels them** — Automatically adds a `stale` label to each stale issue on GitHub
-3. **Analyzes each issue with Devin** — Sends each issue to the Devin API, which investigates the codebase and returns a structured assessment
-4. **Generates a summary** — Aggregates results by type, priority, and recommended action
-5. **Posts to GitHub** — Creates/updates a "Weekly Stale Ticket Summary" issue with the latest analysis
-6. **Displays results in your terminal** — Shows a formatted table of the top tickets ranked by priority and confidence
+1. **Fetches all open issues** — Scans a GitHub repo for all open issues
+2. **Analyzes each issue with Devin** — Sends each issue to the Devin API, which investigates the codebase and returns a structured assessment
+3. **Generates a summary** — Aggregates results by type, priority, and recommended action
+4. **Posts to GitHub** — Creates/updates a "Weekly Ticket Summary" discussion with the latest analysis
+5. **Displays results in your terminal** — Shows a formatted table of the top tickets ranked by priority and confidence
 
 You can also **automate fixes** — point the tool at a specific issue and Devin will investigate, fix the code, write tests, and open a PR.
 
@@ -19,7 +18,7 @@ You can also **automate fixes** — point the tool at a specific issue and Devin
 
 ## How the Analysis Works
 
-For each stale issue, the tool creates a Devin session with a prompt that includes the issue title, body, and labels. Devin investigates the issue against the actual codebase and returns a structured JSON response with these fields:
+For each open issue, the tool creates a Devin session with a prompt that includes the issue title, body, and labels. Devin investigates the issue against the actual codebase and returns a structured JSON response with these fields:
 
 | Field | Values | Description |
 |-------|--------|-------------|
@@ -93,22 +92,17 @@ Some settings are saved to `config.json` so they persist between runs:
 # View current config
 ticket-analyzer config list
 # Output:
-#   stale_days = 0
 #   top_n = 10
-
-# Change the staleness threshold to 14 days
-ticket-analyzer config set stale_days 14
 
 # Change the default number of top tickets shown
 ticket-analyzer config set top_n 20
 
 # Check a specific value
-ticket-analyzer config get stale_days
-# Output: stale_days = 14
+ticket-analyzer config get top_n
+# Output: top_n = 20
 ```
 
 The config file is created automatically on first run with these defaults:
-- `stale_days`: **0** — all open issues are considered stale by default
 - `top_n`: **10** — show the top 10 tickets in the results table
 
 ---
@@ -117,7 +111,7 @@ The config file is created automatically on first run with these defaults:
 
 ### Full Analysis
 
-Analyze all stale issues in the target repo:
+Analyze all open issues in the target repo:
 
 ```bash
 ticket-analyzer analyze
@@ -125,18 +119,16 @@ ticket-analyzer analyze
 
 This will:
 1. Fetch all open issues from the repo
-2. Filter to those with no activity in N+ days (default: 0, meaning all issues)
-3. Add a `stale` label to each one on GitHub
-4. Send each to Devin for analysis
-5. Post a markdown summary to a dedicated "Weekly Stale Ticket Summary" issue on GitHub
-6. Print a summary and top-10 table to your terminal
+2. Send each to Devin for analysis
+3. Post a markdown summary to a dedicated "Weekly Ticket Summary" discussion on GitHub
+4. Print a summary and top-10 table to your terminal
 
 **Example output:**
 
 ```
-Stale Tickets Summary
-─────────────────────
-Total stale tickets:  20
+Tickets Summary
+───────────────
+Total tickets:        20
 By type:              8 bugs, 4 features, 4 cleanup
 By action:            4 automate, 8 engineer review, 4 needs more info
 By priority:          5 high, 9 medium, 6 low
@@ -161,9 +153,6 @@ Top 10 Tickets
 These flags override your saved config **for this run only** — they don't change `config.json`:
 
 ```bash
-# Only treat issues with 14+ days of inactivity as stale
-ticket-analyzer analyze --stale-days 14
-
 # Show top 20 instead of top 10
 ticket-analyzer analyze --top 20
 ```
@@ -262,14 +251,12 @@ graph TD
 ```mermaid
 flowchart TD
     Start["ticket-analyzer analyze"] --> FetchIssues["Fetch all open issues from GitHub"]
-    FetchIssues --> FilterStale["Filter issues with no activity in N days"]
-    FilterStale --> LabelStale["Add 'stale' label to each stale issue"]
-    LabelStale --> SendToDevin["Send each issue to Devin for analysis"]
+    FetchIssues --> SendToDevin["Send each issue to Devin for analysis"]
     SendToDevin --> CollectResults["Collect structured analysis results"]
     CollectResults --> GenSummary["Generate aggregate summary"]
     GenSummary --> ApplyFilters["Apply CLI filters (type, action, priority)"]
     ApplyFilters --> TopN["Select top N tickets by priority and confidence"]
-    TopN --> PostGitHub["Post markdown summary to GitHub issue"]
+    TopN --> PostGitHub["Post markdown summary to GitHub discussion"]
     PostGitHub --> Display["Display results in terminal"]
 ```
 
@@ -296,16 +283,16 @@ All tests use mocked API responses — no tokens or network access needed.
 # Install test dependencies
 pip install -r requirements-dev.txt
 
-# Run all 54 tests
+# Run all tests
 pytest tests/ -v
 ```
 
-**Expected result: all 54 tests pass.**
+**Expected result: all tests pass.**
 
 Tests cover:
 - **`test_github_client.py`** — Fetching issues, adding labels, posting comments, pagination, PR filtering
 - **`test_devin_client.py`** — Session creation, status polling, result parsing, timeouts
-- **`test_analyzer.py`** — Stale detection, summary generation, filtering, sorting, formatting, full analysis flow
+- **`test_analyzer.py`** — Summary generation, filtering, sorting, formatting, full analysis flow
 - **`test_config.py`** — Default values, set/get persistence, auto-creation, unknown key rejection
 
 ---
@@ -320,7 +307,7 @@ ticket-automation-tool/
 │   ├── config.py           # Persistent config management (config.json)
 │   ├── github_client.py    # GitHub REST API — issues, labels, comments
 │   ├── devin_client.py     # Devin API — session creation, polling, parsing
-│   ├── analyzer.py         # Orchestration — stale detection, analysis, formatting
+│   ├── analyzer.py         # Orchestration — analysis, formatting
 │   └── models.py           # Data models (TicketAnalysis, AnalysisSummary, Config)
 ├── tests/
 │   ├── __init__.py

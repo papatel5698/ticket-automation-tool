@@ -149,7 +149,7 @@ def get_repo_discussion_category(repo, category_name, github_token=None):
 
 def find_or_create_summary_discussion(repo, github_token=None):
     """Find the dedicated summary discussion, or create it if it doesn't exist."""
-    summary_title = "Weekly Stale Ticket Summary"
+    summary_title = "Weekly Ticket Summary"
     owner, name = repo.split("/")
 
     # Search existing discussions
@@ -183,7 +183,7 @@ def find_or_create_summary_discussion(repo, github_token=None):
     """
     body = (
         "This discussion is used by the ticket-automation-tool to post "
-        "analysis summaries of stale tickets.\n\n"
+        "analysis summaries of open tickets.\n\n"
         "Subscribe to this discussion to receive notifications when new analyses are posted."
     )
     data = _graphql_request(mutation, github_token, {
