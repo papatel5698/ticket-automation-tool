@@ -104,7 +104,7 @@ def wait_for_session(devin_token, session_id, timeout=DEFAULT_TIMEOUT, poll_inte
     while time.time() - start_time < timeout:
         status = get_session_status(devin_token, session_id)
         state = status.get("status_enum", "")
-        if state in ("finished", "stopped", "failed"):
+        if state in ("blocked", "finished", "stopped", "failed"):
             return status
         time.sleep(poll_interval)
     raise TimeoutError(

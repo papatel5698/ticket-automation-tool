@@ -90,6 +90,15 @@ class TestWaitForSession:
 
     @patch("src.devin_client.time.sleep")
     @patch("src.devin_client.requests.get")
+    def test_returns_on_blocked(self, mock_get, mock_sleep):
+        mock_get.return_value = _mock_response(
+            json_data={"session_id": "abc", "status_enum": "blocked"}
+        )
+        result = wait_for_session("token", "abc", timeout=30)
+        assert result["status_enum"] == "blocked"
+
+    @patch("src.devin_client.time.sleep")
+    @patch("src.devin_client.requests.get")
     def test_returns_on_failed(self, mock_get, mock_sleep):
         mock_get.return_value = _mock_response(
             json_data={"session_id": "abc", "status_enum": "failed"}
