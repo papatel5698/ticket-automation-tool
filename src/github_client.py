@@ -1,6 +1,7 @@
 import requests
 import time
 import json
+from datetime import datetime, timezone, timedelta
 
 API_BASE = "https://api.github.com"
 GRAPHQL_URL = "https://api.github.com/graphql"
@@ -147,27 +148,20 @@ def get_repo_discussion_category(repo, category_name, github_token=None):
     raise Exception(f"Discussion category '{category_name}' not found in {repo}")
 
 
-def find_or_create_summary_discussion(repo, github_token=None):
-    """Find the dedicated summary discussion, or create it if it doesn't exist."""
-    summary_title = "Weekly Ticket Summary"
-    owner, name = repo.split("/")
+def _format_discussion_title():
+    """Generate a human-friendly discussion title with Pacific time."""
+    pacific = timezone(timedelta(hours=-7))
+    now_pt = datetime.now(pacific)
+    day = now_pt.day
+    suffix = "th" if 11 <= day <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+    time_str = now_pt.strftime("%I:%M %p").lstrip("0").lower()
+    month = now_pt.strftime("%B")
+    return f"Open Ticket Summary ran {month} {day}{suffix} at {time_str}"
 
-    # Search existing discussions
-    query = """
-    query($owner: String!, $name: String!) {
-        repository(owner: $owner, name: $name) {
-            discussions(first: 50) {
-                nodes { id title }
-            }
-        }
-    }
-    """
-    data = _graphql_request(query, github_token, {"owner": owner, "name": name})
-    for disc in data["repository"]["discussions"]["nodes"]:
-        if disc["title"] == summary_title:
-            return disc["id"]
 
-    # Create a new discussion in the "General" category
+def create_summary_discussion(repo, body, github_token=None):
+    """Create a new summary discussion with a timestamped title."""
+    title = _format_discussion_title()
     repo_id, category_id = get_repo_discussion_category(repo, "General", github_token)
     mutation = """
     mutation($repoId: ID!, $categoryId: ID!, $title: String!, $body: String!) {
@@ -181,15 +175,10 @@ def find_or_create_summary_discussion(repo, github_token=None):
         }
     }
     """
-    body = (
-        "This discussion is used by the ticket-automation-tool to post "
-        "analysis summaries of open tickets.\n\n"
-        "Subscribe to this discussion to receive notifications when new analyses are posted."
-    )
     data = _graphql_request(mutation, github_token, {
         "repoId": repo_id,
         "categoryId": category_id,
-        "title": summary_title,
+        "title": title,
         "body": body,
     })
     return data["createDiscussion"]["discussion"]["id"]

@@ -190,9 +190,7 @@ class TestRunFullAnalysis:
         mock_github.get_open_issues.return_value = [
             {"number": 1, "title": "Bug", "updated_at": old_date, "labels": []},
         ]
-        mock_github.find_or_create_summary_discussion.return_value = "D_abc123"
-        mock_github.post_discussion_comment.return_value = {"id": "DC_1"}
-        mock_github.add_label.return_value = []
+        mock_github.create_summary_discussion.return_value = "D_new123"
 
         # Setup mock Devin
         mock_devin.create_analysis_session.return_value = {"session_id": "abc"}
