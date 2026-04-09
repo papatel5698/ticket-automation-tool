@@ -190,7 +190,7 @@ def run_full_analysis(config, github_token, devin_token, repo, stale_days=None,
     if progress_callback:
         progress_callback("start", total)
 
-    with ThreadPoolExecutor(max_workers=min(10, total) if total > 0 else 1) as executor:
+    with ThreadPoolExecutor(max_workers=min(3, total) if total > 0 else 1) as executor:
         future_to_issue = {
             executor.submit(analyze_single_ticket, issue, github_token, devin_token, repo): issue
             for issue in stale_issues
