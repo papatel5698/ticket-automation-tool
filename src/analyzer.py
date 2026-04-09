@@ -5,20 +5,6 @@ from src.models import TicketAnalysis, AnalysisSummary
 from src import github_client, devin_client, cache
 
 
-def identify_stale_issues(issues, stale_days):
-    """Filter issues with no activity in the given number of days."""
-    stale = []
-    now = datetime.now(timezone.utc)
-    for issue in issues:
-        updated_at = issue.get("updated_at", issue.get("created_at", ""))
-        if updated_at:
-            updated = datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
-            days_since = (now - updated).days
-            if days_since >= stale_days:
-                stale.append(issue)
-    return stale
-
-
 def generate_summary(analyses):
     """Create an aggregate summary from a list of TicketAnalysis objects."""
     counts_by_type = {}
@@ -60,8 +46,8 @@ def generate_top_n(analyses, n, filters=None):
 def format_cli_output(summary, top_n):
     """Format analysis results for terminal display."""
     lines = []
-    lines.append("Stale Tickets Summary")
-    lines.append("\u2500" * 21)
+    lines.append("Tickets Summary")
+    lines.append("\u2500" * 15)
 
     type_parts = ", ".join(f"{v} {k}s" for k, v in summary.counts_by_type.items())
     action_parts = ", ".join(
@@ -69,7 +55,7 @@ def format_cli_output(summary, top_n):
     )
     priority_parts = ", ".join(f"{v} {k}" for k, v in summary.counts_by_priority.items())
 
-    lines.append(f"Total stale tickets:  {summary.total_count}")
+    lines.append(f"Total tickets:        {summary.total_count}")
     lines.append(f"By type:              {type_parts}")
     lines.append(f"By action:            {action_parts}")
     lines.append(f"By priority:          {priority_parts}")
@@ -111,9 +97,9 @@ def format_single_ticket(analysis):
 def format_github_comment(summary, top_n):
     """Format analysis results as a markdown comment for GitHub."""
     lines = []
-    lines.append("## Stale Tickets Analysis Summary")
+    lines.append("## Ticket Analysis Summary")
     lines.append("")
-    lines.append(f"**Total stale tickets:** {summary.total_count}")
+    lines.append(f"**Total tickets:** {summary.total_count}")
     lines.append("")
     lines.append("### By Type")
     for k, v in summary.counts_by_type.items():
@@ -188,31 +174,29 @@ def _staggered_analyze(issue, github_token, devin_token, repo, delay,
                                  progress_callback=progress_callback)
 
 
-def run_full_analysis(config, github_token, devin_token, repo, stale_days=None,
+def run_full_analysis(config, github_token, devin_token, repo,
                       top_n=None, filters=None, progress_callback=None,
                       use_cache=True):
-    """Main entry point: fetch issues, analyze stale ones, post summary."""
-    stale_days = stale_days if stale_days is not None else config.get("stale_days", 0)
+    """Main entry point: fetch issues, analyze them, post summary."""
     top_n_count = top_n if top_n is not None else config.get("top_n", 10)
 
-    # Fetch and filter stale issues
+    # Fetch all open issues
     issues = github_client.get_open_issues(repo, github_token)
-    stale_issues = identify_stale_issues(issues, stale_days)
 
     # Split issues into cached and uncached
     analyses = []
     uncached_issues = []
-    total = len(stale_issues)
+    total = len(issues)
 
     if use_cache:
-        for issue in stale_issues:
+        for issue in issues:
             cached = cache.get_cached_analysis(issue)
             if cached is not None:
                 analyses.append(cached)
             else:
                 uncached_issues.append(issue)
     else:
-        uncached_issues = stale_issues
+        uncached_issues = issues
 
     cached_count = total - len(uncached_issues)
 
@@ -248,13 +232,6 @@ def run_full_analysis(config, github_token, devin_token, repo, stale_days=None,
                         progress_callback("error", total, completed, issue["number"], str(e))
                     else:
                         print(f"Warning: Failed to analyze issue #{issue['number']}: {e}")
-
-    # Label stale issues (done after analysis to avoid modifying updated_at
-    # before caching, which would invalidate the cache on subsequent runs)
-    for issue in stale_issues:
-        existing_labels = [l["name"] for l in issue.get("labels", [])]
-        if "stale" not in existing_labels:
-            github_client.add_label(repo, issue["number"], "stale", github_token)
 
     # Generate summary and top-N
     summary = generate_summary(analyses)

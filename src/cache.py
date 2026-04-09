@@ -15,7 +15,7 @@ def _issue_cache_key(issue):
 
     Uses issue number, title, and body — but NOT updated_at.
     This avoids cache invalidation when the tool itself modifies an issue
-    (e.g., adding a 'stale' label updates updated_at on GitHub).
+    (e.g., adding a label updates updated_at on GitHub).
     The cache is still invalidated when the issue content changes.
     """
     content = f"{issue['number']}:{issue['title']}:{issue.get('body', '')}"

@@ -4,7 +4,6 @@ import os
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.json")
 
 DEFAULTS = {
-    "stale_days": 0,
     "top_n": 10,
 }
 

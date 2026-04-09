@@ -25,5 +25,4 @@ class AnalysisSummary:
 
 @dataclass
 class Config:
-    stale_days: int = 0
     top_n: int = 10

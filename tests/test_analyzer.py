@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 from datetime import datetime, timezone, timedelta
 from src.analyzer import (
-    identify_stale_issues, generate_summary, generate_top_n,
+    generate_summary, generate_top_n,
     format_cli_output, format_single_ticket, format_github_comment,
     analyze_single_ticket, run_full_analysis,
 )
@@ -33,38 +33,6 @@ def _make_analysis(number, title, type_="bug", action="automate",
         complexity_reasoning="Test complexity reasoning",
         description="Test description",
     )
-
-
-class TestIdentifyStaleIssues:
-    def test_identifies_stale_issues(self):
-        issues = [
-            _make_issue(1, "Old bug", 40),
-            _make_issue(2, "Recent bug", 5),
-            _make_issue(3, "Very old", 100),
-        ]
-        stale = identify_stale_issues(issues, 30)
-        assert len(stale) == 2
-        assert stale[0]["number"] == 1
-        assert stale[1]["number"] == 3
-
-    def test_no_stale_issues(self):
-        issues = [
-            _make_issue(1, "Fresh", 1),
-            _make_issue(2, "Recent", 10),
-        ]
-        stale = identify_stale_issues(issues, 30)
-        assert len(stale) == 0
-
-    def test_zero_stale_days(self):
-        issues = [
-            _make_issue(1, "Any issue", 0),
-        ]
-        stale = identify_stale_issues(issues, 0)
-        assert len(stale) == 1
-
-    def test_empty_issues_list(self):
-        stale = identify_stale_issues([], 30)
-        assert len(stale) == 0
 
 
 class TestGenerateSummary:
@@ -151,8 +119,8 @@ class TestFormatCliOutput:
         )
         top = [_make_analysis(1, "Test Bug")]
         output = format_cli_output(summary, top)
-        assert "Stale Tickets Summary" in output
-        assert "Total stale tickets:  3" in output
+        assert "Tickets Summary" in output
+        assert "Total tickets:        3" in output
         assert "2 bugs" in output
 
     def test_includes_top_n_table(self):
@@ -183,7 +151,7 @@ class TestFormatGithubComment:
         )
         top = [_make_analysis(1, "Bug 1")]
         output = format_github_comment(summary, top)
-        assert "## Stale Tickets Analysis Summary" in output
+        assert "## Ticket Analysis Summary" in output
         assert "| # | Priority |" in output
         assert "Bug 1" in output
 
@@ -240,12 +208,11 @@ class TestRunFullAnalysis:
             "description": "Fix the bug",
         }
 
-        config = {"stale_days": 0, "top_n": 10}
+        config = {"top_n": 10}
         cli_output, analyses, summary, top = run_full_analysis(
             config, "gh_token", "devin_token", "owner/repo"
         )
 
         assert len(analyses) == 1
         assert summary.total_count == 1
-        assert "Stale Tickets Summary" in cli_output
-        mock_github.add_label.assert_called_once()
+        assert "Tickets Summary" in cli_output
