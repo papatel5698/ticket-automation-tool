@@ -11,8 +11,14 @@ CACHE_FILE = os.path.join(CACHE_DIR, "analysis_cache.json")
 
 
 def _issue_cache_key(issue):
-    """Generate a cache key based on issue number and content hash."""
-    content = f"{issue['number']}:{issue['title']}:{issue.get('body', '')}:{issue.get('updated_at', '')}"
+    """Generate a cache key based on issue number and content hash.
+
+    Uses issue number, title, and body — but NOT updated_at.
+    This avoids cache invalidation when the tool itself modifies an issue
+    (e.g., adding a 'stale' label updates updated_at on GitHub).
+    The cache is still invalidated when the issue content changes.
+    """
+    content = f"{issue['number']}:{issue['title']}:{issue.get('body', '')}"
     content_hash = hashlib.sha256(content.encode()).hexdigest()[:12]
     return f"{issue['number']}_{content_hash}"
 

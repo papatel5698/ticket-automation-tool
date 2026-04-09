@@ -12,7 +12,9 @@ def _progress_callback(event, total, completed=0, issue_num=None, detail=None,
                        cached_count=0):
     """Display progress during parallel analysis."""
     if event == "start":
-        if cached_count == total:
+        if total == 0:
+            click.echo("No stale issues found.")
+        elif cached_count == total:
             click.echo(f"Loading {total} cached result{'s' if total != 1 else ''}...")
         elif cached_count > 0:
             click.echo(f"Analyzing {total - cached_count} issue{'s' if (total - cached_count) != 1 else ''} "
