@@ -9,7 +9,7 @@ A Python CLI that uses the **Devin API** to analyze open GitHub issues, classify
 1. **Fetches all open issues** — Scans a GitHub repo for all open issues
 2. **Analyzes each issue with Devin** — Sends each issue to the Devin API, which investigates the codebase and returns a structured assessment
 3. **Generates a summary** — Aggregates results by type, priority, and recommended action
-4. **Posts to GitHub** — Creates/updates a "Weekly Ticket Summary" discussion with the latest analysis
+4. **Posts to GitHub** — Creates a new timestamped discussion for each analysis run (e.g., "Open Ticket Summary ran April 9th at 4:47 pm")
 5. **Displays results in your terminal** — Shows a formatted table of the top tickets ranked by priority and confidence
 
 You can also **automate fixes** — point the tool at a specific issue and Devin will investigate, fix the code, write tests, and open a PR.
@@ -120,7 +120,7 @@ ticket-analyzer analyze
 This will:
 1. Fetch all open issues from the repo
 2. Send each to Devin for analysis
-3. Post a markdown summary to a dedicated "Weekly Ticket Summary" discussion on GitHub
+3. Post a markdown summary as a new timestamped discussion on GitHub
 4. Print a summary and top-10 table to your terminal
 
 **Example output:**
