@@ -19,8 +19,12 @@ def _progress_callback(event, total, completed=0, issue_num=None, detail=None,
                        f"in parallel ({cached_count} cached)...")
         else:
             click.echo(f"Analyzing {total} issue{'s' if total != 1 else ''} in parallel...")
+    elif event == "session_creating":
+        click.echo(f"  #{issue_num} Creating Devin session...")
+    elif event == "session_waiting":
+        click.echo(f"  #{issue_num} Waiting for analysis...")
     elif event == "done":
-        click.echo(f"  [{completed}/{total}] #{issue_num} {detail}")
+        click.echo(f"  [{completed}/{total}] #{issue_num} Done - {detail}")
     elif event == "error":
         click.echo(f"  [{completed}/{total}] #{issue_num} FAILED: {detail}")
 

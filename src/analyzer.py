@@ -148,15 +148,25 @@ def format_github_comment(summary, top_n):
     return "\n".join(lines)
 
 
-def analyze_single_ticket(issue, github_token, devin_token, repo):
+def analyze_single_ticket(issue, github_token, devin_token, repo,
+                          progress_callback=None):
     """Deep-dive analysis of one ticket using Devin."""
+    issue_num = issue["number"]
+
+    if progress_callback:
+        progress_callback("session_creating", 0, 0, issue_num)
+
     session = devin_client.create_analysis_session(devin_token, issue, repo)
     session_id = session.get("session_id")
+
+    if progress_callback:
+        progress_callback("session_waiting", 0, 0, issue_num, session_id)
+
     result = devin_client.wait_for_session(devin_token, session_id)
     parsed = devin_client.parse_analysis_result(result)
 
     return TicketAnalysis(
-        issue_number=issue["number"],
+        issue_number=issue_num,
         title=issue["title"],
         type=parsed.get("type", "unknown"),
         action=parsed.get("action", "needs_more_info"),
@@ -169,11 +179,13 @@ def analyze_single_ticket(issue, github_token, devin_token, repo):
     )
 
 
-def _staggered_analyze(issue, github_token, devin_token, repo, delay):
+def _staggered_analyze(issue, github_token, devin_token, repo, delay,
+                       progress_callback=None):
     """Analyze a single ticket with a staggered start delay to avoid 429s."""
     if delay > 0:
         time.sleep(delay)
-    return analyze_single_ticket(issue, github_token, devin_token, repo)
+    return analyze_single_ticket(issue, github_token, devin_token, repo,
+                                 progress_callback=progress_callback)
 
 
 def run_full_analysis(config, github_token, devin_token, repo, stale_days=None,
@@ -221,7 +233,8 @@ def run_full_analysis(config, github_token, devin_token, repo, stale_days=None,
             for idx, issue in enumerate(uncached_issues):
                 delay = idx * 2  # 2-second stagger between submissions
                 future = executor.submit(
-                    _staggered_analyze, issue, github_token, devin_token, repo, delay
+                    _staggered_analyze, issue, github_token, devin_token, repo,
+                    delay, progress_callback=progress_callback
                 )
                 future_to_issue[future] = issue
 
