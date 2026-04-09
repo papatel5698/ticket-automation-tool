@@ -199,12 +199,6 @@ def run_full_analysis(config, github_token, devin_token, repo, stale_days=None,
     issues = github_client.get_open_issues(repo, github_token)
     stale_issues = identify_stale_issues(issues, stale_days)
 
-    # Label stale issues
-    for issue in stale_issues:
-        existing_labels = [l["name"] for l in issue.get("labels", [])]
-        if "stale" not in existing_labels:
-            github_client.add_label(repo, issue["number"], "stale", github_token)
-
     # Split issues into cached and uncached
     analyses = []
     uncached_issues = []
@@ -254,6 +248,13 @@ def run_full_analysis(config, github_token, devin_token, repo, stale_days=None,
                         progress_callback("error", total, completed, issue["number"], str(e))
                     else:
                         print(f"Warning: Failed to analyze issue #{issue['number']}: {e}")
+
+    # Label stale issues (done after analysis to avoid modifying updated_at
+    # before caching, which would invalidate the cache on subsequent runs)
+    for issue in stale_issues:
+        existing_labels = [l["name"] for l in issue.get("labels", [])]
+        if "stale" not in existing_labels:
+            github_client.add_label(repo, issue["number"], "stale", github_token)
 
     # Generate summary and top-N
     summary = generate_summary(analyses)
