@@ -18,20 +18,24 @@ def _headers(devin_token):
 
 def _request_with_retries(method, url, devin_token, **kwargs):
     """Make an HTTP request with retry logic and 429 backoff."""
+    last_error = None
     for attempt in range(MAX_RETRIES):
         try:
             resp = method(url, headers=_headers(devin_token), **kwargs)
             if resp.status_code == 429:
                 retry_after = int(resp.headers.get("Retry-After", RETRY_DELAY * (2 ** attempt)))
+                last_error = f"429 Too Many Requests (attempt {attempt + 1}/{MAX_RETRIES})"
                 time.sleep(retry_after)
                 continue
             resp.raise_for_status()
             return resp
         except requests.exceptions.RequestException as e:
+            last_error = str(e)
             if attempt < MAX_RETRIES - 1:
                 time.sleep(RETRY_DELAY * (2 ** attempt))
                 continue
             raise Exception(f"Devin API request failed after {MAX_RETRIES} attempts: {e}")
+    raise Exception(f"Devin API request failed after {MAX_RETRIES} attempts: {last_error}")
 
 
 def create_analysis_session(devin_token, issue_data, repo):
