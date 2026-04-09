@@ -1,4 +1,7 @@
 import os
+import warnings
+warnings.filterwarnings("ignore", message="urllib3 v2 only supports OpenSSL")
+
 import click
 from src import config as config_module
 from src import github_client, devin_client, analyzer
