@@ -205,7 +205,7 @@ def run_full_analysis(config, github_token, devin_token, repo,
 
     # Analyze uncached issues with Devin (in parallel with staggered starts)
     if uncached_issues:
-        max_workers = min(3, len(uncached_issues))
+        max_workers = min(5, len(uncached_issues))
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_to_issue = {}
             for idx, issue in enumerate(uncached_issues):
