@@ -117,23 +117,25 @@ def wait_for_session(devin_token, session_id, timeout=DEFAULT_TIMEOUT, poll_inte
 
 def parse_analysis_result(session_result):
     """Extract structured analysis from Devin's response."""
-    structured_output = session_result.get("structured_output", {})
+    structured_output = session_result.get("structured_output")
 
     # Try to parse from structured output first
     if structured_output:
         return structured_output
 
-    # Fall back to parsing the last message from the conversation
-    last_message = session_result.get("last_message", "")
-    try:
-        # Try to find JSON in the message
-        start = last_message.find("{")
-        end = last_message.rfind("}") + 1
-        if start != -1 and end > start:
-            return json.loads(last_message[start:end])
-    except (json.JSONDecodeError, ValueError):
-        pass
+    # Fall back to parsing JSON from the conversation messages
+    messages = session_result.get("messages", [])
+    for msg in reversed(messages):
+        text = msg.get("message", "")
+        try:
+            start = text.find("{")
+            end = text.rfind("}") + 1
+            if start != -1 and end > start:
+                return json.loads(text[start:end])
+        except (json.JSONDecodeError, ValueError):
+            continue
 
+    last_text = messages[-1].get("message", "") if messages else "No analysis available."
     return {
         "type": "unknown",
         "action": "needs_more_info",
@@ -142,5 +144,5 @@ def parse_analysis_result(session_result):
         "priority": "low",
         "complexity": "unknown",
         "complexity_reasoning": "Could not determine complexity.",
-        "description": last_message or "No analysis available.",
+        "description": last_text,
     }
