@@ -21,8 +21,3 @@ class AnalysisSummary:
     counts_by_type: dict = field(default_factory=dict)
     counts_by_action: dict = field(default_factory=dict)
     counts_by_priority: dict = field(default_factory=dict)
-
-
-@dataclass
-class Config:
-    top_n: int = 10
