@@ -115,6 +115,17 @@ def wait_for_session(devin_token, session_id, timeout=DEFAULT_TIMEOUT, poll_inte
     )
 
 
+def terminate_session(devin_token, session_id):
+    """Terminate an active Devin session to free up resources."""
+    url = f"{API_BASE}/sessions/{session_id}"
+    try:
+        resp = _request_with_retries(requests.delete, url, devin_token)
+        return resp.json()
+    except Exception:
+        # Best-effort termination — don't fail the analysis if cleanup fails
+        return None
+
+
 def parse_analysis_result(session_result):
     """Extract structured analysis from Devin's response."""
     structured_output = session_result.get("structured_output")
