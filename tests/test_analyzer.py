@@ -207,9 +207,8 @@ class TestRunFullAnalysis:
             "description": "Fix the bug",
         }
 
-        config = {"top_n": 10}
         cli_output, analyses, summary, top = run_full_analysis(
-            config, "gh_token", "devin_token", "owner/repo"
+            "gh_token", "devin_token", "owner/repo"
         )
 
         assert len(analyses) == 1

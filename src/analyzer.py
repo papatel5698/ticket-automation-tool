@@ -177,11 +177,11 @@ def _staggered_analyze(issue, github_token, devin_token, repo, delay,
                                  progress_callback=progress_callback)
 
 
-def run_full_analysis(config, github_token, devin_token, repo,
+def run_full_analysis(github_token, devin_token, repo,
                       top_n=None, filters=None, progress_callback=None,
                       use_cache=True):
     """Main entry point: fetch issues, analyze them, post summary."""
-    top_n_count = top_n if top_n is not None else config.get("top_n", 10)
+    top_n_count = top_n if top_n is not None else 10
 
     # Fetch all open issues
     issues = github_client.get_open_issues(repo, github_token)

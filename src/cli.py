@@ -4,7 +4,6 @@ import warnings
 warnings.filterwarnings("ignore", message="urllib3 v2 only supports OpenSSL")
 
 import click
-from src import config as config_module
 from src import github_client, devin_client, analyzer
 
 
@@ -67,8 +66,6 @@ def analyze(token, github_token, repo, top, action, ticket_type,
         click.echo("Error: Repository required. Set GITHUB_REPO or use --repo.")
         raise SystemExit(1)
 
-    cfg = config_module.get_all_config()
-
     # Single ticket mode
     if ticket is not None:
         issue = github_client.get_issue(repo, ticket, github_token)
@@ -86,7 +83,7 @@ def analyze(token, github_token, repo, top, action, ticket_type,
         filters["priority"] = priority
 
     cli_output, analyses, summary, top_tickets = analyzer.run_full_analysis(
-        cfg, github_token, token, repo,
+        github_token, token, repo,
         top_n=top,
         filters=filters if filters else None,
         progress_callback=_progress_callback,
@@ -136,45 +133,6 @@ def automate(token, github_token, repo, ticket):
     else:
         click.echo(f"Devin session ended with status: {status}")
         click.echo("Check the Devin dashboard for details.")
-
-
-@cli.group(name="config")
-def config_group():
-    """Manage persistent configuration."""
-    pass
-
-
-@config_group.command(name="set")
-@click.argument("key")
-@click.argument("value")
-def config_set(key, value):
-    """Set a configuration value."""
-    try:
-        result = config_module.set_config(key, value)
-        click.echo(f"{key} = {result}")
-    except KeyError as e:
-        click.echo(f"Error: {e}")
-        raise SystemExit(1)
-
-
-@config_group.command(name="get")
-@click.argument("key")
-def config_get(key):
-    """Get a configuration value."""
-    try:
-        value = config_module.get_config(key)
-        click.echo(f"{key} = {value}")
-    except KeyError as e:
-        click.echo(f"Error: {e}")
-        raise SystemExit(1)
-
-
-@config_group.command(name="list")
-def config_list():
-    """List all configuration values."""
-    cfg = config_module.list_config()
-    for key, value in cfg.items():
-        click.echo(f"{key} = {value}")
 
 
 @cli.command(name="clear-cache")

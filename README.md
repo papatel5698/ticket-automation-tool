@@ -8,9 +8,10 @@ A Python CLI that uses the **Devin API** to analyze open GitHub issues, classify
 
 1. **Fetches all open issues** — Scans a GitHub repo for all open issues
 2. **Analyzes each issue with Devin** — Sends each issue to the Devin API, which investigates the codebase and returns a structured assessment
-3. **Generates a summary** — Aggregates results by type, priority, and recommended action
-4. **Posts to GitHub** — Creates a new timestamped discussion for each analysis run (e.g., "Open Ticket Summary ran April 9th at 4:47 pm")
-5. **Displays results in your terminal** — Shows a formatted table of the top tickets ranked by priority and confidence
+3. **Caches results locally** — Stores analysis results in a local JSON cache so unchanged issues aren't re-analyzed on subsequent runs
+4. **Generates a summary** — Aggregates results by type, priority, and recommended action
+5. **Posts to GitHub** — Creates a new timestamped discussion for each analysis run (e.g., "Open Ticket Summary ran April 9th at 4:47 pm")
+6. **Displays results in your terminal** — Shows a formatted table of the top tickets ranked by priority and confidence
 
 You can also **automate fixes** — point the tool at a specific issue and Devin will investigate, fix the code, write tests, and open a PR.
 
@@ -84,27 +85,6 @@ Every command accepts `--token`, `--github-token`, and `--repo` flags. Flags tak
 ticket-analyzer analyze --token YOUR_DEVIN_TOKEN --github-token YOUR_GITHUB_TOKEN --repo owner/repo
 ```
 
-### Persistent Configuration
-
-Some settings are saved to `config.json` so they persist between runs:
-
-```bash
-# View current config
-ticket-analyzer config list
-# Output:
-#   top_n = 10
-
-# Change the default number of top tickets shown
-ticket-analyzer config set top_n 20
-
-# Check a specific value
-ticket-analyzer config get top_n
-# Output: top_n = 20
-```
-
-The config file is created automatically on first run with these defaults:
-- `top_n`: **10** — show the top 10 tickets in the results table
-
 ---
 
 ## Usage
@@ -119,9 +99,10 @@ ticket-analyzer analyze
 
 This will:
 1. Fetch all open issues from the repo
-2. Send each to Devin for analysis
-3. Post a markdown summary as a new timestamped discussion on GitHub
-4. Print a summary and top-10 table to your terminal
+2. Check the local cache for previously analyzed issues (skipping unchanged ones)
+3. Send uncached issues to Devin for analysis
+4. Post a markdown summary as a new timestamped discussion on GitHub
+5. Print a summary and top-10 table to your terminal
 
 **Example output:**
 
@@ -149,8 +130,6 @@ Top 10 Tickets
 ```
 
 ### Override Defaults Per-Run
-
-These flags override your saved config **for this run only** — they don't change `config.json`:
 
 ```bash
 # Show top 20 instead of top 10
@@ -201,6 +180,22 @@ ticket-analyzer analyze --priority high
 ticket-analyzer analyze --type bug --action automate --priority high
 ```
 
+### Skip Cache
+
+Force re-analysis of all issues, ignoring cached results:
+
+```bash
+ticket-analyzer analyze --no-cache
+```
+
+### Clear Cache
+
+Remove all cached analysis results:
+
+```bash
+ticket-analyzer clear-cache
+```
+
 ### Automate a Fix
 
 Tell Devin to fix a specific issue and open a PR:
@@ -230,6 +225,18 @@ Resolves #2
 
 ---
 
+## Caching
+
+Analysis results are cached locally in `.cache/analysis_cache.json` to avoid re-analyzing unchanged issues. The cache key is based on a SHA-256 hash of each issue's number, title, and body — so the cache is automatically invalidated when the issue content changes, but not when metadata like labels or timestamps are updated.
+
+- **Cache is used by default** — previously analyzed issues are loaded from cache on subsequent runs
+- **Skip cache per-run** — use `ticket-analyzer analyze --no-cache` to re-analyze everything from scratch
+- **Clear cache** — use `ticket-analyzer clear-cache` to delete all cached results
+
+The `.cache/` directory is gitignored and safe to delete at any time.
+
+---
+
 ## Workflow Diagrams
 
 ### Architecture
@@ -237,13 +244,13 @@ Resolves #2
 ```mermaid
 graph TD
     CLI["cli.py"] --> Analyzer["analyzer.py"]
-    CLI --> Config["config.py"]
     Analyzer --> GitHub["github_client.py"]
     Analyzer --> Devin["devin_client.py"]
+    Analyzer --> Cache["cache.py"]
     Analyzer --> Models["models.py"]
-    Config --> ConfigFile["config.json"]
     GitHub --> GitHubAPI["GitHub REST API"]
     Devin --> DevinAPI["Devin API"]
+    Cache --> CacheFile[".cache/analysis_cache.json"]
 ```
 
 ### Analyze Command Flow
@@ -251,12 +258,13 @@ graph TD
 ```mermaid
 flowchart TD
     Start["ticket-analyzer analyze"] --> FetchIssues["Fetch all open issues from GitHub"]
-    FetchIssues --> SendToDevin["Send each issue to Devin for analysis"]
+    FetchIssues --> CheckCache["Check local cache for each issue"]
+    CheckCache --> SendToDevin["Send uncached issues to Devin for analysis"]
     SendToDevin --> CollectResults["Collect structured analysis results"]
-    CollectResults --> GenSummary["Generate aggregate summary"]
+    CollectResults --> UpdateCache["Cache new analysis results"]
+    UpdateCache --> GenSummary["Generate aggregate summary"]
     GenSummary --> ApplyFilters["Apply CLI filters (type, action, priority)"]
-    ApplyFilters --> TopN["Select top N tickets by priority and confidence"]
-    TopN --> PostGitHub["Post markdown summary to GitHub discussion"]
+    ApplyFilters --> PostGitHub["Post markdown summary to GitHub discussion"]
     PostGitHub --> Display["Display results in terminal"]
 ```
 
@@ -293,7 +301,6 @@ Tests cover:
 - **`test_github_client.py`** — Fetching issues, adding labels, posting comments, pagination, PR filtering
 - **`test_devin_client.py`** — Session creation, status polling, result parsing, timeouts
 - **`test_analyzer.py`** — Summary generation, filtering, sorting, formatting, full analysis flow
-- **`test_config.py`** — Default values, set/get persistence, auto-creation, unknown key rejection
 
 ---
 
@@ -304,18 +311,16 @@ ticket-automation-tool/
 ├── src/
 │   ├── __init__.py
 │   ├── cli.py              # Click-based CLI — entry point for all commands
-│   ├── config.py           # Persistent config management (config.json)
+│   ├── cache.py            # Local JSON cache for analysis results
 │   ├── github_client.py    # GitHub REST API — issues, labels, comments
 │   ├── devin_client.py     # Devin API — session creation, polling, parsing
-│   ├── analyzer.py         # Orchestration — analysis, formatting
-│   └── models.py           # Data models (TicketAnalysis, AnalysisSummary, Config)
+│   ├── analyzer.py         # Orchestration — analysis, formatting, caching
+│   └── models.py           # Data models (TicketAnalysis, AnalysisSummary)
 ├── tests/
 │   ├── __init__.py
 │   ├── test_github_client.py
 │   ├── test_devin_client.py
-│   ├── test_analyzer.py
-│   └── test_config.py
-├── config.json              # Auto-created on first run with defaults
+│   └── test_analyzer.py
 ├── requirements.txt         # click, requests
 ├── requirements-dev.txt     # pytest
 ├── setup.py                 # console_scripts entry point: ticket-analyzer
