@@ -25,6 +25,7 @@ def _request_with_retries(method, url, devin_token, **kwargs):
             if resp.status_code == 429:
                 retry_after = int(resp.headers.get("Retry-After", RETRY_DELAY * (2 ** attempt)))
                 last_error = f"429 Too Many Requests (attempt {attempt + 1}/{MAX_RETRIES})"
+                print(f"  Rate limited (429). Retrying in {retry_after}s (attempt {attempt + 1}/{MAX_RETRIES})...")
                 time.sleep(retry_after)
                 continue
             resp.raise_for_status()
@@ -32,7 +33,9 @@ def _request_with_retries(method, url, devin_token, **kwargs):
         except requests.exceptions.RequestException as e:
             last_error = str(e)
             if attempt < MAX_RETRIES - 1:
-                time.sleep(RETRY_DELAY * (2 ** attempt))
+                wait = RETRY_DELAY * (2 ** attempt)
+                print(f"  Request error: {e}. Retrying in {wait}s (attempt {attempt + 1}/{MAX_RETRIES})...")
+                time.sleep(wait)
                 continue
             raise Exception(f"Devin API request failed after {MAX_RETRIES} attempts: {e}")
     raise Exception(f"Devin API request failed after {MAX_RETRIES} attempts: {last_error}")
