@@ -151,6 +151,9 @@ def analyze_single_ticket(issue, github_token, devin_token, repo,
     result = devin_client.wait_for_session(devin_token, session_id)
     parsed = devin_client.parse_analysis_result(result)
 
+    # Terminate the session to free up Devin resources
+    devin_client.terminate_session(devin_token, session_id)
+
     return TicketAnalysis(
         issue_number=issue_num,
         title=issue["title"],

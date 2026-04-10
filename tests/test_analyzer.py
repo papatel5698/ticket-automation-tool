@@ -179,6 +179,7 @@ class TestAnalyzeSingleTicket:
         assert result.type == "bug"
         assert result.action == "automate"
         assert result.confidence == 95
+        mock_devin.terminate_session.assert_called_once_with("devin_token", "abc")
 
 
 class TestRunFullAnalysis:

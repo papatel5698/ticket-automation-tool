@@ -3,6 +3,7 @@ from unittest.mock import patch, MagicMock
 from src.devin_client import (
     create_analysis_session, create_automation_session,
     get_session_status, wait_for_session, parse_analysis_result,
+    terminate_session,
 )
 
 
@@ -128,6 +129,23 @@ class TestWaitForSession:
         )
         with pytest.raises(TimeoutError):
             wait_for_session("token", "abc", timeout=600, poll_interval=5)
+
+
+class TestTerminateSession:
+    @patch("src.devin_client.requests.delete")
+    def test_terminates_session(self, mock_delete):
+        mock_delete.return_value = _mock_response(
+            json_data={"detail": "Session terminated successfully"}
+        )
+        result = terminate_session("token", "abc123")
+        assert result["detail"] == "Session terminated successfully"
+        mock_delete.assert_called_once()
+
+    @patch("src.devin_client.requests.delete")
+    def test_returns_none_on_failure(self, mock_delete):
+        mock_delete.side_effect = Exception("API error")
+        result = terminate_session("token", "abc123")
+        assert result is None
 
 
 class TestParseAnalysisResult:
