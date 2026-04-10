@@ -146,14 +146,22 @@ class TestParseAnalysisResult:
     def test_parses_json_from_message(self):
         result = {
             "structured_output": {},
-            "last_message": 'Here is the analysis: {"type": "feature", "action": "engineer_review", "confidence": 80}',
+            "messages": [
+                {"type": "user_message", "event_id": "1", "message": "Analyze this issue", "timestamp": "2024-01-01T00:00:00Z"},
+                {"type": "agent_message", "event_id": "2", "message": 'Here is the analysis: {"type": "feature", "action": "engineer_review", "confidence": 80}', "timestamp": "2024-01-01T00:01:00Z"},
+            ],
         }
         parsed = parse_analysis_result(result)
         assert parsed["type"] == "feature"
         assert parsed["action"] == "engineer_review"
 
     def test_returns_defaults_on_failure(self):
-        result = {"structured_output": {}, "last_message": "no json here"}
+        result = {
+            "structured_output": {},
+            "messages": [
+                {"type": "agent_message", "event_id": "1", "message": "no json here", "timestamp": "2024-01-01T00:00:00Z"},
+            ],
+        }
         parsed = parse_analysis_result(result)
         assert parsed["type"] == "unknown"
         assert parsed["action"] == "needs_more_info"
@@ -162,3 +170,15 @@ class TestParseAnalysisResult:
     def test_handles_empty_result(self):
         parsed = parse_analysis_result({})
         assert parsed["type"] == "unknown"
+
+    def test_finds_json_in_earlier_message_when_last_has_none(self):
+        result = {
+            "messages": [
+                {"type": "agent_message", "event_id": "1", "message": '{"type": "bug", "action": "automate", "confidence": 85}', "timestamp": "2024-01-01T00:00:00Z"},
+                {"type": "agent_message", "event_id": "2", "message": "Done with analysis.", "timestamp": "2024-01-01T00:01:00Z"},
+            ],
+        }
+        parsed = parse_analysis_result(result)
+        assert parsed["type"] == "bug"
+        assert parsed["action"] == "automate"
+        assert parsed["confidence"] == 85
