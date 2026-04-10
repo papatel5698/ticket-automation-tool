@@ -126,6 +126,9 @@ def automate(token, github_token, repo, ticket):
     result = devin_client.wait_for_session(token, session_id)
     status = result.get("status_enum", "unknown")
 
+    # Terminate the session to free up Devin resources
+    devin_client.terminate_session(token, session_id)
+
     if status == "finished":
         click.echo("Devin has completed the fix and opened a PR!")
         pr_url = result.get("pr_url", "Check the Devin dashboard for the PR link.")
