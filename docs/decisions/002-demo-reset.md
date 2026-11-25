@@ -15,13 +15,15 @@ Every demo changes calculator-demo: fix PRs remove the intentional bugs, and iss
 
 **How the issues come back**
 1. **Reopen** the closed originals. Issue numbers stay stable, but old triage comments and labels remain, and reopening fires `issues.reopened`, not `issues.opened`.
-2. **Recreate** fresh copies after closing everything open. The copies are clean, and they fire `issues.opened` exactly as a real new issue would. Numbers grow with every reset.
+2. **Recreate** fresh copies and close everything that was open before. The copies are clean, and they fire `issues.opened` exactly as a real new issue would. Numbers grow with every reset.
 
 ## Choice
 
 - **Code: tag + restore commit (option 1).** The reset is a normal commit on `main` ("Reset demo code to demo-baseline"), so history stays readable and nothing outside `src/` and `tests/` is touched. When the demo itself should change, the tag moves; calculator-demo's README has the commands.
 - **Issues: recreate (option 2).** The tool must work on brand-new issues, so the demo should start with brand-new issues. Leftover triage comments would make re-runs look like updates rather than first triage.
 - **Issues are matched by title, not number.** The answer key (#24) and evals (M2) key on titles. The reset rejects duplicate titles. A hidden ID in the issue body was considered and rejected: the model would see it, and a telling ID ("vague-crash") would leak the expected answer.
+- **Open new issues before closing old ones.** If GitHub fails partway through, the worst case is duplicates (a rerun cleans them up), never a repo with no open issues.
+- **Check before changing anything.** The issue set is validated first, and the code reset refuses unless `main` is clean and matches `origin/main`. Dry runs apply the same checks.
 - **Script first, Action as a wrapper.** `scripts/reset_demo.py` works locally and in CI; the "Reset demo" `workflow_dispatch` Action just runs it. `--dry-run` shows the plan before anything changes.
 
 ## Consequences
