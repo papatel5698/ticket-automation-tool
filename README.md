@@ -285,6 +285,12 @@ flowchart TD
 
 ---
 
+## Demo Target
+
+The demo runs against [papatel5698/calculator-demo](https://github.com/papatel5698/calculator-demo), a small calculator with intentional bugs and a standard set of issues. To start each demo from the same state, run its **Reset demo** Action (or `scripts/reset_demo.py` there). It restores the buggy code from the `demo-baseline` tag and recreates the issue set. Why it works this way: [decision 002](docs/decisions/002-demo-reset.md).
+
+---
+
 ## Running Tests
 
 All tests use mocked API responses — no tokens or network access needed.
