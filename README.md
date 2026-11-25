@@ -293,7 +293,7 @@ The demo runs against [papatel5698/calculator-demo](https://github.com/papatel56
 
 ## Evals
 
-`evals/answer_key.json` holds the expected triage (type, action, priority and a reason) for every issue in calculator-demo's standard issue set. Entries are keyed by issue title, because the demo reset recreates issues with new numbers. The key is judged against what the code actually does, not just what each report claims: two of the demo issues report crashes that don't happen. Why: [decision 003](docs/decisions/003-answer-key.md). `src/answer_key.py` loads and validates the key; the eval command that scores against it comes in M2.
+`evals/answer_key.json` holds the expected triage (type, action, priority and a reason) for every issue in calculator-demo's standard issue set (23 issues). Duplicates also carry `duplicate_of`, naming the original issue. Entries are keyed by issue title, because the demo reset recreates issues with new numbers. The key is judged against what the code actually does, not just what each report claims: two of the demo issues report crashes that don't happen. Why: [decision 003](docs/decisions/003-answer-key.md). `src/answer_key.py` loads and validates the key; the eval command that scores against it comes in M2.
 
 `tests/test_answer_key.py` checks that the key covers exactly the titles in calculator-demo's `demo/issues.json`. CI checks out that file; locally, the test runs when `calculator-demo` is cloned next to this repo (or `CALCULATOR_DEMO_DIR` points at it), and skips otherwise.
 
@@ -310,6 +310,8 @@ pip install -r requirements-dev.txt
 # Run all tests
 pytest tests/ -v
 ```
+
+Use Python 3.11 or newer, as CI does. If your system `python3` is older, make a virtual environment first, e.g. `python3.12 -m venv .venv && source .venv/bin/activate`.
 
 **Expected result: all tests pass.**
 

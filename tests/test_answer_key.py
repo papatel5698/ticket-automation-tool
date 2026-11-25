@@ -44,8 +44,52 @@ def test_load_answer_key_returns_entries_by_title(tmp_path):
             action="automate",
             priority="medium",
             reason="One-function fix with a clear expected message.",
+            duplicate_of=None,
         )
     }
+
+
+def test_load_answer_key_reads_duplicate_of(tmp_path):
+    key = load_answer_key(write_key(tmp_path, [
+        entry(),
+        entry(title="Dividing by 0 breaks it", duplicate_of="Division by zero crashes the program"),
+    ]))
+    assert key["Dividing by 0 breaks it"].duplicate_of == "Division by zero crashes the program"
+    assert key["Division by zero crashes the program"].duplicate_of is None
+
+
+def test_load_answer_key_rejects_duplicate_of_an_unknown_title(tmp_path):
+    with pytest.raises(AnswerKeyError, match="duplicate_of"):
+        load_answer_key(write_key(tmp_path, [entry(duplicate_of="No such issue")]))
+
+
+def test_load_answer_key_rejects_a_non_text_duplicate_of(tmp_path):
+    with pytest.raises(AnswerKeyError, match="duplicate_of"):
+        load_answer_key(write_key(tmp_path, [entry(duplicate_of=3)]))
+
+
+def test_load_answer_key_rejects_duplicate_of_itself(tmp_path):
+    with pytest.raises(AnswerKeyError, match="duplicate_of"):
+        load_answer_key(write_key(tmp_path, [entry(duplicate_of=entry()["title"])]))
+
+
+def test_load_answer_key_rejects_chained_duplicates(tmp_path):
+    # Point at the original, so the eval has one canonical issue per group.
+    with pytest.raises(AnswerKeyError, match="original"):
+        load_answer_key(write_key(tmp_path, [
+            entry(),
+            entry(title="B", duplicate_of="Division by zero crashes the program"),
+            entry(title="C", duplicate_of="B"),
+        ]))
+
+
+def test_duplicates_share_their_originals_triage():
+    key = load_answer_key(ANSWER_KEY)
+    for item in key.values():
+        if item.duplicate_of:
+            original = key[item.duplicate_of]
+            assert (item.type, item.action, item.priority) == (
+                original.type, original.action, original.priority), item.title
 
 
 @pytest.mark.parametrize("field,value", [
