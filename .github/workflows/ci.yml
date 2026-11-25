@@ -21,6 +21,13 @@ jobs:
         python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
+      # The answer-key test checks every demo issue has an expected answer.
+      # Hidden path: pytest doesn't collect from dot-directories.
+      - uses: actions/checkout@v4
+        with:
+          repository: papatel5698/calculator-demo
+          path: .calculator-demo
+          sparse-checkout: demo
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
@@ -33,4 +40,6 @@ jobs:
           pip install -r requirements.txt -r requirements-dev.txt
           pip install -e .
       - name: Test
+        env:
+          CALCULATOR_DEMO_DIR: .calculator-demo
         run: pytest --cov=src --cov-report=term-missing --cov-fail-under=60

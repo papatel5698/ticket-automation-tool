@@ -1,0 +1,54 @@
+{
+  "description": "Expected triage for each issue in papatel5698/calculator-demo's demo/issues.json, keyed by title. Judged against the code at the demo-baseline tag, not only against what each report claims. See docs/decisions/003-answer-key.md.",
+  "issues": [
+    {
+      "title": "Division by zero crashes the program",
+      "type": "bug",
+      "action": "automate",
+      "priority": "medium",
+      "reason": "The reported crash doesn't reproduce: main() catches every exception, so 10/0 prints the generic \"Invalid input\". The real defect is the unhelpful message. The expected behaviour (\"Error: Division by zero\") is spelled out, and the fix is a ZeroDivisionError branch in main() or divide(), with a test. That's small and safe to automate. Medium, not high, because nothing crashes."
+    },
+    {
+      "title": "Empty input crashes the program",
+      "type": "bug",
+      "action": "needs_more_info",
+      "priority": "low",
+      "reason": "Doesn't reproduce. evaluate(\"\") raises ValueError (not the reported IndexError), main() catches it and prints \"Invalid input\", then re-prompts. That already meets the stated expected behaviour (\"show an error message or re-prompt\"). Ask the reporter for their version and the traceback before anyone changes code."
+    },
+    {
+      "title": "Division returns integer instead of decimal — 7/2 gives 3",
+      "type": "bug",
+      "action": "automate",
+      "priority": "high",
+      "reason": "Reproduces: divide() uses // instead of /, so 7/2 gives 3. It's a one-character fix in one function, with an existing xfail test to un-mark. High because it silently returns wrong answers."
+    },
+    {
+      "title": "Whitespace in expressions causes parse error",
+      "type": "bug",
+      "action": "automate",
+      "priority": "medium",
+      "reason": "Reproduces: evaluate() rejects \"2 + 3\" because \" 2\" fails the isdigit() check. Stripping spaces before tokenising is a small, local fix with an existing xfail test. Medium: users hit it often, but they get an error rather than a wrong answer."
+    },
+    {
+      "title": "Operator precedence is wrong — 2+3*4 returns 20 instead of 14",
+      "type": "bug",
+      "action": "engineer_review",
+      "priority": "high",
+      "reason": "Reproduces: evaluate() reduces tokens strictly left to right. Fixing it means redesigning the parser (precedence levels, ideally a recursive-descent or shunting-yard parser) and shapes the parentheses feature too. Too much design for an unattended fix. High because it silently returns wrong answers."
+    },
+    {
+      "title": "Add support for parentheses in expressions",
+      "type": "feature",
+      "action": "engineer_review",
+      "priority": "medium",
+      "reason": "New parser capability that depends on how operator precedence gets fixed. Needs a design decision first, so an engineer should own it. Medium: a well-specified, useful feature, but nothing is broken."
+    },
+    {
+      "title": "Add history feature",
+      "type": "feature",
+      "action": "needs_more_info",
+      "priority": "low",
+      "reason": "Too vague to build (\"some kind of history... maybe like pressing the up arrow or something?\"). It could mean readline-style recall, a history command or saved sessions. Ask what the user wants to do with it. Low until that's clear."
+    }
+  ]
+}

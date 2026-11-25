@@ -291,6 +291,14 @@ The demo runs against [papatel5698/calculator-demo](https://github.com/papatel56
 
 ---
 
+## Evals
+
+`evals/answer_key.json` holds the expected triage (type, action, priority and a reason) for every issue in calculator-demo's standard issue set. Entries are keyed by issue title, because the demo reset recreates issues with new numbers. The key is judged against what the code actually does, not just what each report claims: two of the demo issues report crashes that don't happen. Why: [decision 003](docs/decisions/003-answer-key.md). `src/answer_key.py` loads and validates the key; the eval command that scores against it comes in M2.
+
+`tests/test_answer_key.py` checks that the key covers exactly the titles in calculator-demo's `demo/issues.json`. CI checks out that file; locally, the test runs when `calculator-demo` is cloned next to this repo (or `CALCULATOR_DEMO_DIR` points at it), and skips otherwise.
+
+---
+
 ## Running Tests
 
 All tests use mocked API responses — no tokens or network access needed.
@@ -335,12 +343,16 @@ ticket-automation-tool/
 │   ├── github_client.py    # GitHub REST API — issues, labels, comments
 │   ├── devin_client.py     # Devin API — session creation, polling, parsing
 │   ├── analyzer.py         # Orchestration — analysis, formatting, caching
-│   └── models.py           # Data models (TicketAnalysis, AnalysisSummary)
+│   ├── models.py           # Data models (TicketAnalysis, AnalysisSummary)
+│   └── answer_key.py       # Loads and validates evals/answer_key.json
+├── evals/
+│   └── answer_key.json     # Expected triage for each calculator-demo issue
 ├── docs/
 │   ├── brief.md            # Engagement brief: client, problem, success metrics, scope
 │   └── decisions/          # Decision records (NNN-title.md): context, options, choice and why
 ├── tests/
 │   ├── __init__.py
+│   ├── test_answer_key.py
 │   ├── test_github_client.py
 │   ├── test_devin_client.py
 │   └── test_analyzer.py
