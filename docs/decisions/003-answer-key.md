@@ -20,8 +20,9 @@ Option 2. Each entry records the type, action and priority, plus a reason that s
 - **`needs_more_info`**: the report doesn't reproduce, or the request is too vague to build.
 - **Priority**:
   - `high`: silently wrong answers.
-  - `medium`: a crash, or an error on input users normally type.
-  - `low`: a minor inconvenience with an obvious workaround, cleanups with no user impact, and anything vague or non-reproducing.
+  - `medium`: any crash or traceback, or a calculation users normally type being rejected (spaces, negative numbers). A workaround users are unlikely to guess, such as typing `0-5`, doesn't lower it.
+  - `low`: inconveniences outside the calculation itself (exit-command casing), cleanups with no user impact, and anything vague or non-reproducing.
+- **Labels are part of the input, and reporters can get them wrong.** The expected type is judged on the content, not the label. Where a label would make the expected type ambiguous, the issue is left unlabeled.
 - **Duplicates** get the same type, action and priority as the original, plus `duplicate_of` naming it (always the original, never another duplicate). The triage schema has no "duplicate" action yet. Recording it now lets the M2 eval score duplicate detection when the triage can report it.
 
 Two entries differ from what calculator-demo's README implies:
@@ -35,4 +36,4 @@ Two entries differ from what calculator-demo's README implies:
 - **Entries are keyed by title** (see [002](002-demo-reset.md)), and a test checks that the key covers exactly the titles in calculator-demo's `demo/issues.json`. CI checks out that file; locally the test runs when `../calculator-demo` exists.
 - **The key needs updating when the demo code changes.** When the `demo-baseline` tag moves, recheck every reason.
 - **Priority is the most subjective field**, which is why its target in [001](001-success-metrics-and-targets.md) is lower.
-- **calculator-demo's README contradicts the key and leaks the intended categories.** #48 removes them before the first eval.
+- **calculator-demo's README** no longer lists each issue's intended category (removed with #25). Its bug and code-smell tables still describe each defect and fix, and they call the global `result` "state bleed", which the issue set treats as a cleanup. #48 trims them before the first eval.

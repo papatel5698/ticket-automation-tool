@@ -69,7 +69,7 @@
       "type": "bug",
       "action": "needs_more_info",
       "priority": "low",
-      "reason": "No command and no error. The calculator is plain Python with no platform-specific code, so nothing points at Windows. Ask which command they ran and what it printed."
+      "reason": "No command and no error. The calculator is plain Python with no platform-specific code, so nothing points at Windows. Ask which command they ran and what it printed. Typed as bug as the closest fit; it may turn out to be a setup question."
     },
     {
       "title": "Dividing odd numbers gives the wrong answer",
@@ -114,7 +114,7 @@
       "type": "bug",
       "action": "engineer_review",
       "priority": "medium",
-      "reason": "Reproduces: the tokeniser treats every '-' as an operator, so '-5' and '3*-2' fail. Unary minus belongs in the parser redesign for precedence; a local patch would have to be redone. Medium: an error on input users normally type."
+      "reason": "Reproduces: the tokeniser treats every '-' as an operator, so '-5+3' and '3*-2' fail. Allowing only a leading minus would be a local patch, but '3*-2' and '-5+3*2' need unary minus to bind tighter than the other operators, which is part of the parser redesign for precedence. A patch now would be redone then. Medium: it rejects calculations users normally type, and the workaround ('0-5') isn't one they'd think of."
     },
     {
       "title": "Decimal numbers aren't accepted",
@@ -156,14 +156,14 @@
       "type": "cleanup",
       "action": "engineer_review",
       "priority": "low",
-      "reason": "Looks like a safe one-line fix, but it isn't. eval() runs arbitrary Python, so input like __import__('os').system('...') executes commands, and a huge exponent like 9**9**9 hangs the process. It would also make ^ mean XOR. A maintainer should decline it with an explanation; the parsing bugs are tracked in their own issues. Typed as cleanup because it proposes replacing existing code rather than adding behaviour. Low: no defect of its own."
+      "reason": "Looks like a safe one-line fix, but it isn't. eval() runs arbitrary Python, so input like __import__('os').system('...') executes commands, and a huge exponent like 9**9**9 hangs the process. It would also make ^ mean XOR. The report's claim that the existing tests would still pass is wrong: the strict-xfail tests would XPASS, and eval(\"\") raises SyntaxError. A maintainer should decline it with an explanation; the parsing bugs are tracked in their own issues. Typed as cleanup because it proposes replacing existing code rather than adding behaviour (the issue has no label). Low: no defect of its own."
     },
     {
       "title": "Require Python 3.12",
       "type": "cleanup",
       "action": "engineer_review",
       "priority": "low",
-      "reason": "A one-line change, but it drops support for everyone on Python 3.9 to 3.11, and nothing in the code needs 3.12. Raising the minimum version is a support-policy decision for the maintainers, not a fix to automate. Low: no defect."
+      "reason": "A one-line change, but nothing in the code needs 3.12, and it would contradict the README and CI, which support 3.11. pyproject.toml's >=3.9 is stale, but choosing the minimum version is a support-policy decision for the maintainers, not a fix to automate. Low: no defect."
     }
   ]
 }
