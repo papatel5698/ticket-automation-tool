@@ -25,6 +25,7 @@ class ExpectedTriage:
     action: str
     priority: str
     reason: str
+    duplicate_of: str | None = None  # title of the original issue, if this is a duplicate
 
 
 def load_answer_key(path: Path) -> dict[str, ExpectedTriage]:
@@ -60,7 +61,25 @@ def load_answer_key(path: Path) -> dict[str, ExpectedTriage]:
             raise AnswerKeyError(f"Entry {raw['title']!r} needs a reason")
         if raw["title"] in key:
             raise AnswerKeyError(f"Duplicate title: {raw['title']!r}")
-        key[raw["title"]] = ExpectedTriage(**{f: raw[f] for f in FIELDS})
+        duplicate_of = raw.get("duplicate_of")
+        if duplicate_of is not None and not isinstance(duplicate_of, str):
+            raise AnswerKeyError(f"Entry {raw['title']!r}: duplicate_of must be a title")
+        key[raw["title"]] = ExpectedTriage(
+            **{f: raw[f] for f in FIELDS}, duplicate_of=duplicate_of
+        )
+
+    for item in key.values():
+        if item.duplicate_of is None:
+            continue
+        if item.duplicate_of == item.title or item.duplicate_of not in key:
+            raise AnswerKeyError(
+                f"Entry {item.title!r}: duplicate_of {item.duplicate_of!r} isn't another entry"
+            )
+        if key[item.duplicate_of].duplicate_of is not None:
+            raise AnswerKeyError(
+                f"Entry {item.title!r}: duplicate_of must name the original issue, "
+                f"not another duplicate"
+            )
     return key
 
 

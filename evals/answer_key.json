@@ -49,6 +49,121 @@
       "action": "needs_more_info",
       "priority": "low",
       "reason": "Too vague to build (\"some kind of history... maybe like pressing the up arrow or something?\"). It could mean readline-style recall, a history command or saved sessions. Ask what the user wants to do with it. Low until that's clear."
+    },
+    {
+      "title": "It crashed yesterday",
+      "type": "bug",
+      "action": "needs_more_info",
+      "priority": "low",
+      "reason": "No input, steps or error output. The only real crash in the code is a traceback on Ctrl-D or Ctrl-C at the prompt, and there's no way to tell whether that's what happened. Ask what they typed and what they saw."
+    },
+    {
+      "title": "Calculator gives wrong answer for large numbers",
+      "type": "bug",
+      "action": "needs_more_info",
+      "priority": "low",
+      "reason": "No example. Python integers are exact at any size, so +, - and * are correct for large numbers. Division truncates, which is the integer-division bug, but that isn't specific to large numbers. Ask for an input and the expected output."
+    },
+    {
+      "title": "Doesn't work on my machine",
+      "type": "bug",
+      "action": "needs_more_info",
+      "priority": "low",
+      "reason": "No command and no error. The calculator is plain Python with no platform-specific code, so nothing points at Windows. Ask which command they ran and what it printed. Typed as bug as the closest fit; it may turn out to be a setup question."
+    },
+    {
+      "title": "Dividing odd numbers gives the wrong answer",
+      "type": "bug",
+      "action": "automate",
+      "priority": "high",
+      "reason": "Same defect as the integer-division issue, reported in different words: divide() uses //.",
+      "duplicate_of": "Division returns integer instead of decimal — 7/2 gives 3"
+    },
+    {
+      "title": "Can't use spaces when typing a calculation",
+      "type": "bug",
+      "action": "automate",
+      "priority": "medium",
+      "reason": "Same defect as the whitespace issue, reported in different words.",
+      "duplicate_of": "Whitespace in expressions causes parse error"
+    },
+    {
+      "title": "Support brackets like (1+2)*3",
+      "type": "feature",
+      "action": "engineer_review",
+      "priority": "medium",
+      "reason": "Same request as the parentheses issue, in different words.",
+      "duplicate_of": "Add support for parentheses in expressions"
+    },
+    {
+      "title": "Pressing Ctrl-D at the prompt prints a traceback",
+      "type": "bug",
+      "action": "automate",
+      "priority": "medium",
+      "reason": "Reproduces: input() sits outside the try block in main(), so EOFError and KeyboardInterrupt escape as tracebacks. The expected behaviour is stated, and the fix is a small except clause around input() with a test. Medium because users see a crash, even though it only happens when they're leaving."
+    },
+    {
+      "title": "Typing QUIT in capitals doesn't exit",
+      "type": "bug",
+      "action": "automate",
+      "priority": "low",
+      "reason": "Reproduces: main() compares against ('quit', 'exit') exactly. Lower-casing the input before the check is a one-line fix with a clear expected behaviour. Low: there's an obvious workaround."
+    },
+    {
+      "title": "Negative numbers give Invalid input",
+      "type": "bug",
+      "action": "engineer_review",
+      "priority": "medium",
+      "reason": "Reproduces: the tokeniser treats every '-' as an operator, so '-5+3' and '3*-2' fail. Allowing only a leading minus would be a local patch, but '3*-2' and '-5+3*2' need unary minus to bind tighter than the other operators, which is part of the parser redesign for precedence. A patch now would be redone then. Medium: it rejects calculations users normally type, and the workaround ('0-5') isn't one they'd think of."
+    },
+    {
+      "title": "Decimal numbers aren't accepted",
+      "type": "feature",
+      "action": "engineer_review",
+      "priority": "medium",
+      "reason": "Reproduces: the tokeniser uses isdigit() and int(). Supporting decimals changes the number type everywhere and needs design choices: float or Decimal, and how to display 5 versus 5.0 or 0.1+0.2. Medium: a common need."
+    },
+    {
+      "title": "Remove the global result variable from calculator.py",
+      "type": "cleanup",
+      "action": "automate",
+      "priority": "low",
+      "reason": "Accurate: the four operations write to a module-level result that nothing reads. Removing the writes changes no behaviour, and the strict-xfail test test_evaluate_leaves_no_module_state proves the fix. Low: no user impact."
+    },
+    {
+      "title": "Remove unused parse_expression()",
+      "type": "cleanup",
+      "action": "automate",
+      "priority": "low",
+      "reason": "Accurate: parse_expression() is never called; the only reference is an import in the tests. Delete both. No behaviour change. Low: no user impact."
+    },
+    {
+      "title": "Add type hints and docstrings to calculator.py",
+      "type": "cleanup",
+      "action": "automate",
+      "priority": "low",
+      "reason": "Mechanical and behaviour-preserving, with the existing tests as a safety net. Low: no user impact."
+    },
+    {
+      "title": "Add an exponent operator",
+      "type": "feature",
+      "action": "engineer_review",
+      "priority": "low",
+      "reason": "Needs the parser redesign: exponents bind tighter than * and are right-associative. It also needs a choice of syntax (^ or **). Low: a nice-to-have."
+    },
+    {
+      "title": "Use Python's eval() to fix the parsing bugs",
+      "type": "cleanup",
+      "action": "engineer_review",
+      "priority": "low",
+      "reason": "Looks like a safe one-line fix, but it isn't. eval() runs arbitrary Python, so input like __import__('os').system('...') executes commands, and a huge exponent like 9**9**9 hangs the process. It would also make ^ mean XOR. The report's claim that the existing tests would still pass is wrong: the strict-xfail tests would XPASS, and eval(\"\") raises SyntaxError. A maintainer should decline it with an explanation; the parsing bugs are tracked in their own issues. Typed as cleanup because it proposes replacing existing code rather than adding behaviour (the issue has no label). Low: no defect of its own."
+    },
+    {
+      "title": "Require Python 3.12",
+      "type": "cleanup",
+      "action": "engineer_review",
+      "priority": "low",
+      "reason": "A one-line change, but nothing in the code needs 3.12, and it would contradict the README and CI, which support 3.11. pyproject.toml's >=3.9 is stale, but choosing the minimum version is a support-policy decision for the maintainers, not a fix to automate. Low: no defect."
     }
   ]
 }
