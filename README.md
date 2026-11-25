@@ -316,13 +316,17 @@ Use Python 3.11 or newer, as CI does. If your system `python3` is older, make a 
 **Expected result: all tests pass.**
 
 Tests cover:
+- **`test_cli.py`** — Every command and option, missing credentials, progress messages (all clients mocked)
+- **`test_error_paths.py`** — Corrupt cache, cache hits and misses, failed analyses, rate limits, retries, GraphQL errors
+- **`test_answer_key.py`** — The eval answer key and its loader
+- **`test_test_isolation.py`** — Tests run against a temporary cache, never the real one
 - **`test_github_client.py`** — Fetching issues, adding labels, posting comments, pagination, PR filtering
 - **`test_devin_client.py`** — Session creation, status polling, result parsing, timeouts
 - **`test_analyzer.py`** — Summary generation, filtering, sorting, formatting, full analysis flow
 
 ### CI and test-driven development
 
-Every pull request and push to `main` runs `.github/workflows/ci.yml`: `pytest` on Python 3.11 and 3.12 with a coverage floor (`--cov-fail-under=70`, just below CI's measured 70.6%; raise it as coverage grows toward the 100% goal, never lower it). Local runs can report a few points lower than CI; #46 tracks why. To see coverage locally:
+Every pull request and push to `main` runs `.github/workflows/ci.yml`: `pytest` on Python 3.11 and 3.12 with a coverage floor (`--cov-fail-under=97`, just below today's 97.3%; raise it as coverage grows toward the 100% goal, never lower it). Why 100%, and which exclusions are allowed: [decision 004](docs/decisions/004-coverage-target.md). Tests never touch real state: `tests/conftest.py` gives every test its own empty cache directory. To see coverage locally:
 
 ```bash
 pytest --cov=src --cov-report=term-missing
@@ -354,7 +358,11 @@ ticket-automation-tool/
 │   └── decisions/          # Decision records (NNN-title.md): context, options, choice and why
 ├── tests/
 │   ├── __init__.py
+│   ├── conftest.py         # Gives every test its own empty cache directory
 │   ├── test_answer_key.py
+│   ├── test_cli.py
+│   ├── test_error_paths.py
+│   ├── test_test_isolation.py
 │   ├── test_github_client.py
 │   ├── test_devin_client.py
 │   └── test_analyzer.py

@@ -143,5 +143,5 @@ def clear_cache():
     click.echo("Analysis cache cleared.")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - entry point; tests call cli() via CliRunner
     cli()
