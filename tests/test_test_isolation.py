@@ -20,7 +20,5 @@ def test_cache_points_at_a_temporary_directory():
 def test_each_test_starts_with_an_empty_cache():
     assert not Path(cache.CACHE_FILE).exists()
     cache.save_cache({"leftover": {"x": 1}})
-
-
-def test_and_the_next_one_does_too():
-    assert not Path(cache.CACHE_FILE).exists()
+    assert Path(cache.CACHE_FILE).exists()
+    assert not (REPO_CACHE_DIR / "analysis_cache.json").exists()

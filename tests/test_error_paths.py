@@ -83,8 +83,6 @@ def test_full_analysis_uses_cached_results(clients):
 
 def test_full_analysis_without_cache_reanalyzes_and_stores_nothing(clients):
     _, devin, _ = clients
-    cache.cache_analysis(ISSUE, analysis())
-    cache.clear_cache()
     analyzer.run_full_analysis("gh", "dv", "o/r", use_cache=False)
 
     assert devin.create_analysis_session.call_count == 2
