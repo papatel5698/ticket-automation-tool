@@ -320,7 +320,7 @@ Tests cover:
 
 ### CI and test-driven development
 
-Every pull request and push to `main` runs `.github/workflows/ci.yml`: `pytest` on Python 3.11 and 3.12 with a coverage floor (`--cov-fail-under=60`, today's level; raise it as coverage grows, never lower it). To see coverage locally:
+Every pull request and push to `main` runs `.github/workflows/ci.yml`: `pytest` on Python 3.11 and 3.12 with a coverage floor (`--cov-fail-under=70`, just below CI's measured 70.6%; raise it as coverage grows toward the 100% goal, never lower it). Local runs can report a few points lower than CI; #46 tracks why. To see coverage locally:
 
 ```bash
 pytest --cov=src --cov-report=term-missing

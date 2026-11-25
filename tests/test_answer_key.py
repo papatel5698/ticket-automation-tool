@@ -82,6 +82,32 @@ def test_load_answer_key_wraps_unreadable_files(tmp_path):
         load_answer_key(path)
 
 
+@pytest.mark.parametrize("content,message", [
+    ("[]", "object"),
+    ('{"issues": {}}', "list"),
+    ('{"issues": []}', "no entries"),
+    ("{}", "no entries"),
+    ('{"issues": ["not an object"]}', "Entry 1"),
+])
+def test_load_answer_key_rejects_malformed_structure(tmp_path, content, message):
+    path = tmp_path / "answer_key.json"
+    path.write_text(content)
+    with pytest.raises(AnswerKeyError, match=message):
+        load_answer_key(path)
+
+
+def test_load_answer_key_rejects_non_string_fields(tmp_path):
+    with pytest.raises(AnswerKeyError, match="reason"):
+        load_answer_key(write_key(tmp_path, [entry(reason=42)]))
+
+
+def test_load_answer_key_wraps_undecodable_files(tmp_path):
+    path = tmp_path / "answer_key.json"
+    path.write_bytes(b"\xff\xfe\x00")
+    with pytest.raises(AnswerKeyError, match="answer_key.json"):
+        load_answer_key(path)
+
+
 def test_compare_titles_reports_both_directions():
     key = {"A": None, "B": None}
     missing, extra = compare_titles(key, ["B", "C"])
@@ -99,8 +125,23 @@ def demo_issue_set_path():
     return Path(demo_dir) / "demo" / "issues.json"
 
 
+def should_skip_demo_check(env, default_exists):
+    """Skip only when nobody asked for the check: no CI, no override, no sibling clone."""
+    return not env.get("CI") and not env.get("CALCULATOR_DEMO_DIR") and not default_exists
+
+
+@pytest.mark.parametrize("env,default_exists,skip", [
+    ({}, False, True),
+    ({}, True, False),
+    ({"CI": "true"}, False, False),
+    ({"CALCULATOR_DEMO_DIR": "/wrong"}, False, False),  # a bad override fails, not skips
+])
+def test_should_skip_demo_check(env, default_exists, skip):
+    assert should_skip_demo_check(env, default_exists) is skip
+
+
 @pytest.mark.skipif(
-    not demo_issue_set_path().exists() and not os.environ.get("CI"),
+    should_skip_demo_check(os.environ, (REPO_ROOT.parent / "calculator-demo").exists()),
     reason="calculator-demo isn't checked out next to this repo (CI always checks it out)",
 )
 def test_answer_key_covers_exactly_the_demo_issue_set():

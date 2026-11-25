@@ -27,7 +27,7 @@
       "type": "bug",
       "action": "automate",
       "priority": "medium",
-      "reason": "Reproduces: evaluate() rejects \"2 + 3\" because \" 2\" fails the isdigit() check. Stripping spaces before tokenising is a small, local fix with an existing xfail test. Medium: users hit it often, but they get an error rather than a wrong answer."
+      "reason": "Reproduces: evaluate() rejects \"2 + 3\" because operands like \"2 \" fail the isdigit() check, so the prompt shows \"Invalid input\". Stripping spaces before tokenising is a small, local fix with an existing xfail test. Medium: users hit it often, but they get an error rather than a wrong answer."
     },
     {
       "title": "Operator precedence is wrong — 2+3*4 returns 20 instead of 14",

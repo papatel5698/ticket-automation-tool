@@ -30,14 +30,27 @@ class ExpectedTriage:
 def load_answer_key(path: Path) -> dict[str, ExpectedTriage]:
     try:
         data = json.loads(Path(path).read_text())
-    except (OSError, json.JSONDecodeError) as error:
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
         raise AnswerKeyError(f"Can't read answer key {path}: {error}") from None
 
+    if not isinstance(data, dict):
+        raise AnswerKeyError(f"{path}: expected a JSON object with an \"issues\" list")
+    issues = data.get("issues", [])
+    if not isinstance(issues, list):
+        raise AnswerKeyError(f"{path}: \"issues\" must be a list")
+    if not issues:
+        raise AnswerKeyError(f"{path}: the answer key has no entries")
+
     key: dict[str, ExpectedTriage] = {}
-    for i, raw in enumerate(data.get("issues", []), 1):
+    for i, raw in enumerate(issues, 1):
+        if not isinstance(raw, dict):
+            raise AnswerKeyError(f"Entry {i} must be an object")
         missing = [f for f in FIELDS if f not in raw]
         if missing:
             raise AnswerKeyError(f"Entry {i} is missing {', '.join(missing)}")
+        not_text = [f for f in FIELDS if not isinstance(raw[f], str)]
+        if not_text:
+            raise AnswerKeyError(f"Entry {i}: {', '.join(not_text)} must be text")
         for field, allowed in (("type", TYPES), ("action", ACTIONS), ("priority", PRIORITIES)):
             if raw[field] not in allowed:
                 raise AnswerKeyError(
