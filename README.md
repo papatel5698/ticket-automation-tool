@@ -302,6 +302,18 @@ Tests cover:
 - **`test_devin_client.py`** — Session creation, status polling, result parsing, timeouts
 - **`test_analyzer.py`** — Summary generation, filtering, sorting, formatting, full analysis flow
 
+### CI and test-driven development
+
+Every pull request and push to `main` runs `.github/workflows/ci.yml`: `pytest` on Python 3.11 and 3.12 with a coverage floor (`--cov-fail-under=60`, today's level; raise it as coverage grows, never lower it). To see coverage locally:
+
+```bash
+pytest --cov=src --cov-report=term-missing
+```
+
+Work is test-first: write a failing test, then the code that makes it pass. `.github/workflows/tests-required.yml` enforces the visible part: a PR that changes `src/` must also change `tests/` or `evals/`. For a change that truly needs no test, add the `no-tests-needed` label and explain why in the PR.
+
+`main` is protected: changes land only through a pull request with green CI. Every PR also gets a Claude Code review (`.github/workflows/claude-code-review.yml`).
+
 ---
 
 ## Project Structure
