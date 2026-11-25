@@ -1,0 +1,36 @@
+name: Tests required
+
+# Test-driven development check: a PR that changes source code must also
+# change tests. For a change that genuinely needs no test (docs, config,
+# a pure rename), add the `no-tests-needed` label and say why in the PR.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  tests-required:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Source changes come with test changes
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          SKIP: ${{ contains(github.event.pull_request.labels.*.name, 'no-tests-needed') }}
+        run: |
+          changed=$(git diff --name-only "$BASE...$HEAD")
+          src=$(echo "$changed" | grep -E '^src/.*\.py$' | grep -vE '^(tests|evals)/' || true)
+          tests=$(echo "$changed" | grep -E '^(tests|evals)/' || true)
+          if [ -z "$src" ]; then echo "No source changes."; exit 0; fi
+          if [ -n "$tests" ]; then echo "Source and test changes found:"; echo "$tests"; exit 0; fi
+          if [ "$SKIP" = "true" ]; then echo "Skipped: PR has the no-tests-needed label."; exit 0; fi
+          echo "::error::Python source under src/ changed without any test changes:"
+          echo "$src"
+          echo "Write the failing test first. If no test is needed, add the no-tests-needed label and explain why in the PR."
+          exit 1
