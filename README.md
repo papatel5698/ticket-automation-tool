@@ -1,5 +1,7 @@
 # Ticket Automation Tool
 
+> **Start with the [engagement brief](docs/brief.md):** the client, their problem, success metrics, constraints and what's out of scope.
+
 A Python CLI that uses the **Devin API** to analyze open GitHub issues, classify them, and optionally trigger automated fixes. Point it at any GitHub repo and get a structured breakdown of what Devin can fix automatically and what needs human review.
 
 ---
@@ -328,6 +330,8 @@ ticket-automation-tool/
 │   ├── devin_client.py     # Devin API — session creation, polling, parsing
 │   ├── analyzer.py         # Orchestration — analysis, formatting, caching
 │   └── models.py           # Data models (TicketAnalysis, AnalysisSummary)
+├── docs/
+│   └── brief.md            # Engagement brief: client, problem, success metrics, scope
 ├── tests/
 │   ├── __init__.py
 │   ├── test_github_client.py
