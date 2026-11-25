@@ -29,5 +29,5 @@ Every demo changes calculator-demo: fix PRs remove the intentional bugs, and iss
 ## Consequences
 
 - **Pull requests are not touched.** Leftover fix PRs are closed by hand; automating that risks closing real work.
-- **Issues created by the Action's `GITHUB_TOKEN` don't trigger other workflows.** Once the triage Action exists (M4), the reset needs a PAT or GitHub App token if it should kick off triage. Each full reset would then cost about 25 × $0.06 ≈ $1.50 in triage, which matters under the $50/month cap.
+- **Issues created by the Action's `GITHUB_TOKEN` don't trigger other workflows.** Once the triage Action exists (M4), the reset needs a PAT or GitHub App token if it should kick off triage. Each full reset would then cost about $0.06 per issue in triage: about $0.42 for today's 7 issues, about $1.50 once #25 grows the set to 25. That matters under the $50/month cap.
 - **Branch protection on calculator-demo's `main`** will need a bypass for the reset's direct push, or the reset will have to open a PR instead.
